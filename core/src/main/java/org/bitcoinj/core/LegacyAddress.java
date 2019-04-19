@@ -42,14 +42,11 @@ import org.bitcoinj.script.ScriptPattern;
  * should be interpreted. Whilst almost all addresses today are hashes of public keys, another (currently unsupported
  * type) can contain a hash of a script instead.</p>
  */
-public class LegacyAddress extends Address {
+public abstract class LegacyAddress extends Address {
     /**
      * An address is a RIPEMD160 hash of a public key, therefore is always 160 bits or 20 bytes.
      */
     public static final int LENGTH = 20;
-
-    /** True if P2SH, false if P2PKH. */
-    public final boolean p2sh;
 
     /**
      * Private constructor. Use {@link #fromBase58(NetworkParameters, String)},
@@ -58,21 +55,18 @@ public class LegacyAddress extends Address {
      * 
      * @param params
      *            network this address is valid for
-     * @param p2sh
-     *            true if hash160 is hash of a script, false if it is hash of a pubkey
      * @param hash160
      *            20-byte hash of pubkey or script
      */
-    private LegacyAddress(NetworkParameters params, boolean p2sh, byte[] hash160) throws AddressFormatException {
+    protected LegacyAddress(NetworkParameters params, byte[] hash160) throws AddressFormatException {
         super(params, hash160);
         if (hash160.length != 20)
             throw new AddressFormatException.InvalidDataLength(
                     "Legacy addresses are 20 byte (160 bit) hashes, but got: " + hash160.length);
-        this.p2sh = p2sh;
     }
 
     /**
-     * Construct a {@link LegacyAddress} that represents the given pubkey hash. The resulting address will be a P2PKH type of
+     * Construct a {@link LegacyP2PKHAddress} that represents the given pubkey hash. The resulting address will be a P2PKH type of
      * address.
      * 
      * @param params
@@ -81,12 +75,12 @@ public class LegacyAddress extends Address {
      *            20-byte pubkey hash
      * @return constructed address
      */
-    public static LegacyAddress fromPubKeyHash(NetworkParameters params, byte[] hash160) throws AddressFormatException {
-        return new LegacyAddress(params, false, hash160);
+    public static LegacyP2PKHAddress fromPubKeyHash(NetworkParameters params, byte[] hash160) throws AddressFormatException {
+        return LegacyP2PKHAddress.fromPubKeyHash(params, hash160);
     }
 
     /**
-     * Construct a {@link LegacyAddress} that represents the public part of the given {@link ECKey}. Note that an address is
+     * Construct a {@link LegacyP2PKHAddress} that represents the public part of the given {@link ECKey}. Note that an address is
      * derived from a hash of the public key and is not the public key itself.
      * 
      * @param params
@@ -95,12 +89,12 @@ public class LegacyAddress extends Address {
      *            only the public part is used
      * @return constructed address
      */
-    public static LegacyAddress fromKey(NetworkParameters params, ECKey key) {
+    public static LegacyP2PKHAddress fromKey(NetworkParameters params, ECKey key) {
         return fromPubKeyHash(params, key.getPubKeyHash());
     }
 
     /**
-     * Construct a {@link LegacyAddress} that represents the given P2SH script hash.
+     * Construct a {@link LegacyP2SHAddress} that represents the given P2SH script hash.
      * 
      * @param params
      *            network this address is valid for
@@ -108,13 +102,13 @@ public class LegacyAddress extends Address {
      *            P2SH script hash
      * @return constructed address
      */
-    public static LegacyAddress fromScriptHash(NetworkParameters params, byte[] hash160) throws AddressFormatException {
-        return new LegacyAddress(params, true, hash160);
+    public static LegacyP2SHAddress fromScriptHash(NetworkParameters params, byte[] hash160) throws AddressFormatException {
+        return LegacyP2SHAddress.fromScriptHash(params, hash160);
     }
 
     /** @deprecated use {@link #fromScriptHash(NetworkParameters, byte[])} */
     @Deprecated
-    public static LegacyAddress fromP2SHHash(NetworkParameters params, byte[] hash160) {
+    public static LegacyP2SHAddress fromP2SHHash(NetworkParameters params, byte[] hash160) {
         return fromScriptHash(params, hash160);
     }
 
@@ -123,7 +117,7 @@ public class LegacyAddress extends Address {
      *             {@link ScriptPattern#extractHashFromP2SH(Script)}
      */
     @Deprecated
-    public static LegacyAddress fromP2SHScript(NetworkParameters params, Script scriptPubKey) {
+    public static LegacyP2SHAddress fromP2SHScript(NetworkParameters params, Script scriptPubKey) {
         checkArgument(ScriptPattern.isP2SH(scriptPubKey), "Not a P2SH script");
         return fromScriptHash(params, ScriptPattern.extractHashFromP2SH(scriptPubKey));
     }
@@ -143,39 +137,38 @@ public class LegacyAddress extends Address {
      */
     public static LegacyAddress fromBase58(@Nullable NetworkParameters params, String base58)
             throws AddressFormatException, AddressFormatException.WrongNetwork {
+        // TODO: call child methods
         byte[] versionAndDataBytes = Base58.decodeChecked(base58);
         int version = versionAndDataBytes[0] & 0xFF;
         byte[] bytes = Arrays.copyOfRange(versionAndDataBytes, 1, versionAndDataBytes.length);
         if (params == null) {
             for (NetworkParameters p : Networks.get()) {
                 if (version == p.getAddressHeader())
-                    return new LegacyAddress(p, false, bytes);
+                    return LegacyP2PKHAddress.fromPubKeyHash(p, bytes);
                 else if (version == p.getP2SHHeader())
-                    return new LegacyAddress(p, true, bytes);
+                    return LegacyP2PKHAddress.fromPubKeyHash(p, bytes);
             }
             throw new AddressFormatException.InvalidPrefix("No network found for " + base58);
         } else {
             if (version == params.getAddressHeader())
-                return new LegacyAddress(params, false, bytes);
+                return LegacyP2PKHAddress.fromPubKeyHash(params, bytes);
             else if (version == params.getP2SHHeader())
-                return new LegacyAddress(params, true, bytes);
+                return LegacyP2SHAddress.fromPubKeyHash(params, bytes);
             throw new AddressFormatException.WrongNetwork(version);
         }
     }
 
-    /** @deprecated use {@link #fromPubKeyHash(NetworkParameters, byte[])} */
-    @Deprecated
-    public LegacyAddress(NetworkParameters params, byte[] hash160) throws AddressFormatException {
-        this(params, false, hash160);
-    }
-
     /**
      * Get the version header of an address. This is the first byte of a base58 encoded address.
-     * 
+     *
      * @return version header as one byte
      */
-    public int getVersion() {
-        return p2sh ? params.getP2SHHeader() : params.getAddressHeader();
+    public abstract int getVersion();
+
+    /** @deprecated Use {@link #getOutputScriptType()} */
+    @Deprecated
+    public boolean isP2SHAddress() {
+        return getOutputScriptType() == ScriptType.P2SH;
     }
 
     /**
@@ -206,15 +199,7 @@ public class LegacyAddress extends Address {
      * @return type of output script
      */
     @Override
-    public ScriptType getOutputScriptType() {
-        return p2sh ? ScriptType.P2SH : ScriptType.P2PKH;
-    }
-
-    /** @deprecated Use {@link #getOutputScriptType()} */
-    @Deprecated
-    public boolean isP2SHAddress() {
-        return p2sh;
-    }
+    public abstract ScriptType getOutputScriptType();
 
     /**
      * Given an address, examines the version byte and attempts to find a matching NetworkParameters. If you aren't sure
@@ -226,21 +211,6 @@ public class LegacyAddress extends Address {
      */
     public static NetworkParameters getParametersFromAddress(String address) throws AddressFormatException {
         return LegacyAddress.fromBase58(null, address).getParameters();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o)
-            return true;
-        if (o == null || getClass() != o.getClass())
-            return false;
-        LegacyAddress other = (LegacyAddress) o;
-        return super.equals(other) && this.p2sh == other.p2sh;
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(super.hashCode(), p2sh);
     }
 
     @Override
