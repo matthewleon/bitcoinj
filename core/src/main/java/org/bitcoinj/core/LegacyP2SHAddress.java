@@ -25,6 +25,19 @@ public class LegacyP2SHAddress extends LegacyAddress {
         return new LegacyP2SHAddress(params, hash160);
     }
 
+    /**
+     * Construct a {@link LegacyP2SHAddress} from its base58 form.
+     *
+     * @param params
+     *            expected network this address is valid for, or null if if the network should be derived from the
+     *            base58
+     * @param base58
+     *            base58-encoded textual form of the address
+     * @throws AddressFormatException
+     *             if the given base58 doesn't parse or the checksum is invalid
+     * @throws AddressFormatException.WrongNetwork
+     *             if the given address is valid but for a different chain (eg testnet vs mainnet)
+     */
     public static LegacyP2SHAddress fromBase58(@Nullable NetworkParameters params, String base58)
             throws AddressFormatException, AddressFormatException.WrongNetwork {
         byte[] versionAndDataBytes = Base58.decodeChecked(base58);

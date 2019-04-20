@@ -137,24 +137,10 @@ public abstract class LegacyAddress extends Address {
      */
     public static LegacyAddress fromBase58(@Nullable NetworkParameters params, String base58)
             throws AddressFormatException, AddressFormatException.WrongNetwork {
-        // TODO: call child methods
-        byte[] versionAndDataBytes = Base58.decodeChecked(base58);
-        int version = versionAndDataBytes[0] & 0xFF;
-        byte[] bytes = Arrays.copyOfRange(versionAndDataBytes, 1, versionAndDataBytes.length);
-        if (params == null) {
-            for (NetworkParameters p : Networks.get()) {
-                if (version == p.getAddressHeader())
-                    return LegacyP2PKHAddress.fromPubKeyHash(p, bytes);
-                else if (version == p.getP2SHHeader())
-                    return LegacyP2PKHAddress.fromPubKeyHash(p, bytes);
-            }
-            throw new AddressFormatException.InvalidPrefix("No network found for " + base58);
-        } else {
-            if (version == params.getAddressHeader())
-                return LegacyP2PKHAddress.fromPubKeyHash(params, bytes);
-            else if (version == params.getP2SHHeader())
-                return LegacyP2SHAddress.fromPubKeyHash(params, bytes);
-            throw new AddressFormatException.WrongNetwork(version);
+        try {
+            return LegacyP2PKHAddress.fromBase58(params, base58);
+        } catch (AddressFormatException ignore) {
+            return LegacyP2SHAddress.fromBase58(params, base58);
         }
     }
 
