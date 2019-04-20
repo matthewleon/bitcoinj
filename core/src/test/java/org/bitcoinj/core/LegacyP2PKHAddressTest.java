@@ -56,7 +56,7 @@ public class LegacyP2PKHAddressTest {
         try {
             LegacyP2PKHAddress.fromBase58(TESTNET, "this is not a valid address!");
             fail();
-        } catch (AddressFormatException.WrongNetwork e) {
+        } catch (AddressFormatException.WrongNetwork | AddressFormatException.WrongAddressType e) {
             fail();
         } catch (AddressFormatException e) {
             // Success.
@@ -66,7 +66,7 @@ public class LegacyP2PKHAddressTest {
         try {
             LegacyP2PKHAddress.fromBase58(TESTNET, "");
             fail();
-        } catch (AddressFormatException.WrongNetwork e) {
+        } catch (AddressFormatException.WrongNetwork | AddressFormatException.WrongAddressType e) {
             fail();
         } catch (AddressFormatException e) {
             // Success.
@@ -86,10 +86,10 @@ public class LegacyP2PKHAddressTest {
         try {
             LegacyP2PKHAddress.fromBase58(TESTNET, "2MuVSxtfivPKJe93EC1Tb9UhJtGhsoWEHCe");
             fail();
-        } catch (AddressFormatException.WrongNetwork e) {
-            fail();
-        } catch (AddressFormatException e) {
+        } catch (AddressFormatException.WrongAddressType e) {
             // Success.
+        } catch (AddressFormatException e) {
+            fail();
         }
     }
 
