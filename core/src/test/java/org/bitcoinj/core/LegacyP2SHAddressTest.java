@@ -12,6 +12,7 @@ import java.util.List;
 
 import static org.bitcoinj.core.Utils.HEX;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
 
 public class LegacyP2SHAddressTest {
     private static final NetworkParameters TESTNET = TestNet3Params.get();
@@ -57,5 +58,30 @@ public class LegacyP2SHAddressTest {
         LegacyP2SHAddress address = LegacyP2SHAddress.fromScriptHash(MAINNET,
                 ScriptPattern.extractHashFromP2SH(p2shScript));
         assertEquals("3N25saC4dT24RphDAwLtD8LUN4E2gZPJke", address.toString());
+    }
+
+    @Test
+    public void cloning() throws Exception {
+        LegacyP2SHAddress a = LegacyP2SHAddress.fromScriptHash(TESTNET, HEX.decode("18a0e827269b5211eb51a4af1b2fa69333efa722"));
+        LegacyP2SHAddress b = a.clone();
+
+        assertEquals(a, b);
+        assertNotSame(a, b);
+    }
+
+    @Test
+    public void roundtripBase58() {
+        String base58 = "3N25saC4dT24RphDAwLtD8LUN4E2gZPJke";
+        assertEquals(base58, LegacyP2SHAddress.fromBase58(null, base58).toBase58());
+    }
+
+    @Test
+    public void comparisonCloneEqualTo() throws Exception {
+        String base58 = "3N25saC4dT24RphDAwLtD8LUN4E2gZPJke";
+        LegacyAddress a = LegacyAddress.fromBase58(MAINNET, base58);
+        LegacyAddress b = a.clone();
+
+        int result = a.compareTo(b);
+        assertEquals(0, result);
     }
 }
