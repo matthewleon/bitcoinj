@@ -45,12 +45,12 @@ public class LegacyP2SHAddress extends LegacyAddress {
         byte[] bytes = Arrays.copyOfRange(versionAndDataBytes, 1, versionAndDataBytes.length);
         if (params == null) {
             for (NetworkParameters p : Networks.get()) {
-                if (version == p.getAddressHeader())
+                if (version == p.getP2SHHeader())
                     return fromScriptHash(p, bytes);
             }
             throw new AddressFormatException.InvalidPrefix("No network found for " + base58);
         } else {
-            if (version == params.getAddressHeader())
+            if (version == params.getP2SHHeader())
                 return fromScriptHash(params, bytes);
             throw new AddressFormatException.WrongNetwork(version);
         }
