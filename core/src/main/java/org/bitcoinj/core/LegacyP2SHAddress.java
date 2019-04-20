@@ -17,6 +17,8 @@ import java.util.Arrays;
  */
 public class LegacyP2SHAddress extends LegacyAddress {
 
+    public static final Script.ScriptType OUTPUT_SCRIPT_TYPE = Script.ScriptType.P2SH;
+
     private LegacyP2SHAddress(NetworkParameters params, byte[] hash160) throws AddressFormatException {
         super(params, hash160);
     }
@@ -78,7 +80,7 @@ public class LegacyP2SHAddress extends LegacyAddress {
 
     @Override
     public Script.ScriptType getOutputScriptType() {
-        return Script.ScriptType.P2SH;
+        return OUTPUT_SCRIPT_TYPE;
     }
 
     /**

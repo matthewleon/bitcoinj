@@ -14,6 +14,8 @@ import java.util.Arrays;
  */
 public class LegacyP2PKHAddress extends LegacyAddress {
 
+    public static final Script.ScriptType OUTPUT_SCRIPT_TYPE = Script.ScriptType.P2PKH;
+
     private LegacyP2PKHAddress(NetworkParameters params, byte[] hash160) throws AddressFormatException {
         super(params, hash160);
     }
@@ -90,7 +92,7 @@ public class LegacyP2PKHAddress extends LegacyAddress {
 
     @Override
     public Script.ScriptType getOutputScriptType() {
-        return Script.ScriptType.P2PKH;
+        return OUTPUT_SCRIPT_TYPE;
     }
 
     /**
