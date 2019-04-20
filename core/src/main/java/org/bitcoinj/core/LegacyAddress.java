@@ -173,15 +173,6 @@ public abstract class LegacyAddress extends Address {
     }
 
     /**
-     * Get the type of output script that will be used for sending to the address. This is either
-     * {@link ScriptType#P2PKH} or {@link ScriptType#P2SH}.
-     * 
-     * @return type of output script
-     */
-    @Override
-    public abstract ScriptType getOutputScriptType();
-
-    /**
      * Given an address, examines the version byte and attempts to find a matching NetworkParameters. If you aren't sure
      * which network the address is intended for (eg, it was provided by a user), you can use this to decide if it is
      * compatible with the current wallet.
