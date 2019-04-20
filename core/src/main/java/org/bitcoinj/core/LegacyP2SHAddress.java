@@ -76,9 +76,7 @@ public class LegacyP2SHAddress extends LegacyAddress {
         return params.getP2SHHeader();
     }
 
-    /** @deprecated Use isInstanceOf with concrete subclasses */
     @Override
-    @Deprecated
     public Script.ScriptType getOutputScriptType() {
         return Script.ScriptType.P2SH;
     }

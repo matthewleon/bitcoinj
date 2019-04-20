@@ -88,9 +88,7 @@ public class LegacyP2PKHAddress extends LegacyAddress {
         return params.getAddressHeader();
     }
 
-    /** @deprecated Use isInstanceOf with concrete subclasses */
     @Override
-    @Deprecated
     public Script.ScriptType getOutputScriptType() {
         return Script.ScriptType.P2PKH;
     }
