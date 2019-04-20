@@ -60,7 +60,8 @@ public class LegacyAddressTest {
     }
 
     @Test
-    public void stringification() throws Exception {
+    public void stringification() {
+        // TODO: test with instanceof and ensure we get a deprecation warning on getOutputScriptType
         // Test a testnet address.
         LegacyAddress a = LegacyAddress.fromPubKeyHash(TESTNET, HEX.decode("fda79a24e50ff70ff42f7d89585da5bd19d9e5cc"));
         assertEquals("n4eA2nbYqErp7H6jebchxAN59DmNpksexv", a.toString());
@@ -72,7 +73,7 @@ public class LegacyAddressTest {
     }
 
     @Test
-    public void decoding() throws Exception {
+    public void decoding() {
         LegacyAddress a = LegacyAddress.fromBase58(TESTNET, "n4eA2nbYqErp7H6jebchxAN59DmNpksexv");
         assertEquals("fda79a24e50ff70ff42f7d89585da5bd19d9e5cc", Utils.HEX.encode(a.getHash()));
 
