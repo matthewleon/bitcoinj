@@ -105,7 +105,7 @@ public class LegacyP2PKHAddressTest {
     public void getAltNetwork() throws Exception {
         // An alternative network
         class AltNetwork extends MainNetParams {
-            AltNetwork() {
+            private AltNetwork() {
                 super();
                 id = "alt.network";
                 addressHeader = 48;

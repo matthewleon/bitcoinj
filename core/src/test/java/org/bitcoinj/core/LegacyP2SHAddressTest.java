@@ -11,8 +11,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.bitcoinj.core.Utils.HEX;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.*;
 
 public class LegacyP2SHAddressTest {
     private static final NetworkParameters TESTNET = TestNet3Params.get();
@@ -58,6 +57,50 @@ public class LegacyP2SHAddressTest {
         LegacyP2SHAddress address = LegacyP2SHAddress.fromScriptHash(MAINNET,
                 ScriptPattern.extractHashFromP2SH(p2shScript));
         assertEquals("3N25saC4dT24RphDAwLtD8LUN4E2gZPJke", address.toString());
+    }
+
+    @Test
+    public void errorPaths() {
+        // Check what happens if we try and decode garbage.
+        try {
+            LegacyP2SHAddress.fromBase58(TESTNET, "this is not a valid address!");
+            fail();
+        } catch (AddressFormatException.WrongNetwork | AddressFormatException.WrongAddressType e) {
+            fail();
+        } catch (AddressFormatException e) {
+            // Success.
+        }
+
+
+        // Check the empty case.
+        try {
+            LegacyP2SHAddress.fromBase58(TESTNET, "");
+            fail();
+        } catch (AddressFormatException.WrongNetwork | AddressFormatException.WrongAddressType e) {
+            fail();
+        } catch (AddressFormatException e) {
+            // Success.
+        }
+
+        // Check the case of a mismatched network.
+        try {
+            LegacyP2SHAddress.fromBase58(TESTNET, "35b9vsyH1KoFT5a5KtrKusaCcPLkiSo1tU");
+            fail();
+        } catch (AddressFormatException.WrongNetwork e) {
+            // Success.
+        } catch (AddressFormatException e) {
+            fail();
+        }
+
+        // Check the case of decoding a P2PKH address
+        try {
+            LegacyP2SHAddress.fromBase58(TESTNET, "n4eA2nbYqErp7H6jebchxAN59DmNpksexv");
+            fail();
+        } catch (AddressFormatException.WrongAddressType e) {
+            // Success.
+        } catch (AddressFormatException e) {
+            fail();
+        }
     }
 
     @Test
