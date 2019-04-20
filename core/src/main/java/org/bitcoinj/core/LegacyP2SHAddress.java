@@ -75,6 +75,18 @@ public class LegacyP2SHAddress extends LegacyAddress {
         return Script.ScriptType.P2SH;
     }
 
+    /**
+     * Given an address, examines the version byte and attempts to find a matching NetworkParameters. If you aren't sure
+     * which network the address is intended for (eg, it was provided by a user), you can use this to decide if it is
+     * compatible with the current wallet.
+     *
+     * @return network the address is valid for
+     * @throws AddressFormatException if the given base58 doesn't parse or the checksum is invalid
+     */
+    public static NetworkParameters getParametersFromAddress(String address) throws AddressFormatException {
+        return fromBase58(null, address).getParameters();
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o)
