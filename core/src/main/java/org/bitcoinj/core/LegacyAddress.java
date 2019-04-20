@@ -145,7 +145,7 @@ public abstract class LegacyAddress extends Address {
      */
     public abstract int getVersion();
 
-    /** @deprecated Use {@link #getOutputScriptType()} */
+    /** @deprecated Use isInstanceOf with concrete subclasses */
     @Deprecated
     public boolean isP2SHAddress() {
         return getOutputScriptType() == ScriptType.P2SH;
