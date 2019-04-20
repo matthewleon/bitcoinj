@@ -56,11 +56,13 @@ public class LegacyP2PKHAddress extends LegacyAddress {
      *            base58-encoded textual form of the address
      * @throws AddressFormatException
      *             if the given base58 doesn't parse or the checksum is invalid
+     * @throws AddressFormatException.WrongAddressType
+     *             if the given base58 corresponds to a P2SH address
      * @throws AddressFormatException.WrongNetwork
      *             if the given address is valid but for a different chain (eg testnet vs mainnet)
      */
     public static LegacyP2PKHAddress fromBase58(@Nullable NetworkParameters params, String base58)
-            throws AddressFormatException, AddressFormatException.WrongNetwork {
+            throws AddressFormatException, AddressFormatException.WrongAddressType, AddressFormatException.WrongNetwork {
         byte[] versionAndDataBytes = Base58.decodeChecked(base58);
         int version = versionAndDataBytes[0] & 0xFF;
         byte[] bytes = Arrays.copyOfRange(versionAndDataBytes, 1, versionAndDataBytes.length);
@@ -68,11 +70,15 @@ public class LegacyP2PKHAddress extends LegacyAddress {
             for (NetworkParameters p : Networks.get()) {
                 if (version == p.getAddressHeader())
                     return fromPubKeyHash(p, bytes);
+                if (version == p.getP2SHHeader())
+                    throw new AddressFormatException.WrongAddressType("P2PKH");
             }
             throw new AddressFormatException.InvalidPrefix("No network found for " + base58);
         } else {
             if (version == params.getAddressHeader())
                 return fromPubKeyHash(params, bytes);
+            if (version == params.getP2SHHeader())
+                throw new AddressFormatException.WrongAddressType("P2PKH");
             throw new AddressFormatException.WrongNetwork(version);
         }
     }

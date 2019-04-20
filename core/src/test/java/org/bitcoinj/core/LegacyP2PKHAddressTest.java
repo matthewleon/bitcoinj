@@ -82,7 +82,15 @@ public class LegacyP2PKHAddressTest {
             fail();
         }
 
-        // TODO: Check the case of a P2SH address
+        // Check the case of decoding a P2SH address
+        try {
+            LegacyP2PKHAddress.fromBase58(TESTNET, "2MuVSxtfivPKJe93EC1Tb9UhJtGhsoWEHCe");
+            fail();
+        } catch (AddressFormatException.WrongNetwork e) {
+            fail();
+        } catch (AddressFormatException e) {
+            // Success.
+        }
     }
 
     @Test

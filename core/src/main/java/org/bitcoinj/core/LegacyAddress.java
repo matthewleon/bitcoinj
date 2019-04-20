@@ -133,8 +133,12 @@ public abstract class LegacyAddress extends Address {
             throws AddressFormatException, AddressFormatException.WrongNetwork {
         try {
             return LegacyP2PKHAddress.fromBase58(params, base58);
-        } catch (AddressFormatException ignore) {
-            return LegacyP2SHAddress.fromBase58(params, base58);
+        } catch (AddressFormatException.WrongAddressType ignore) {
+            try {
+                return LegacyP2SHAddress.fromBase58(params, base58);
+            } catch (AddressFormatException.WrongAddressType e) {
+                throw new IllegalStateException("Address type is somehow neither P2SH or P2PKH", e);
+            }
         }
     }
 
