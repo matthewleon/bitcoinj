@@ -165,16 +165,15 @@ public class LegacyP2PKHAddressTest {
 
     @Test
     public void comparisonBytesVsString() throws Exception {
-        // TODO: provide a dataset for just P2PKH
-//        BufferedReader dataSetReader = new BufferedReader(
-//                new InputStreamReader(getClass().getResourceAsStream("LegacyP2PKHAddressTestDataset.txt")));
-//        String line;
-//        while ((line = dataSetReader.readLine()) != null) {
-//            String[] addr = line.split(",");
-//            LegacyP2PKHAddress first = LegacyP2PKHAddress.fromBase58(MAINNET, addr[0]);
-//            LegacyP2PKHAddress second = LegacyP2PKHAddress.fromBase58(MAINNET, addr[1]);
-//            assertTrue(first.compareTo(second) < 0);
-//            assertTrue(first.toString().compareTo(second.toString()) < 0);
-//        }
+        BufferedReader dataSetReader = new BufferedReader(
+                new InputStreamReader(getClass().getResourceAsStream("LegacyAddressTestDataset.txt")));
+        String line;
+        while ((line = dataSetReader.readLine()) != null) {
+            String[] addr = line.split(",");
+            LegacyP2PKHAddress first = LegacyP2PKHAddress.fromBase58(MAINNET, addr[0]);
+            LegacyP2PKHAddress second = LegacyP2PKHAddress.fromBase58(MAINNET, addr[1]);
+            assertTrue(first.compareTo(second) < 0);
+            assertTrue(first.toString().compareTo(second.toString()) < 0);
+        }
     }
 }
