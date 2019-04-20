@@ -6,6 +6,12 @@ import org.bitcoinj.script.Script;
 import javax.annotation.Nullable;
 import java.util.Arrays;
 
+/**
+ * A legacy P2PKH (Pay 2 Public Key Hash) address is built by taking the RIPE-MD160 hash of the public key bytes,
+ * with a version prefix and a checksum suffix, then encoding it textually as base58. The version prefix is used to
+ * both denote the network for which the address is valid (see {@link NetworkParameters}, and also to indicate how the
+ * bytes inside the address * should be interpreted (in this case, as P2PKH rather than P2SH).
+ */
 public class LegacyP2PKHAddress extends LegacyAddress {
 
     private LegacyP2PKHAddress(NetworkParameters params, byte[] hash160) throws AddressFormatException {

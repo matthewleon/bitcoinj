@@ -32,15 +32,9 @@ import org.bitcoinj.script.ScriptPattern;
 
 
 /**
- * <p>A Bitcoin address looks like 1MsScoe2fTJoq4ZPdQgqyhgWeoNamYPevy and is derived from an elliptic curve public key
- * plus a set of network parameters. Not to be confused with a {@link PeerAddress} or {@link AddressMessage}
- * which are about network (TCP) addresses.</p>
- *
- * <p>A standard address is built by taking the RIPE-MD160 hash of the public key bytes, with a version prefix and a
- * checksum suffix, then encoding it textually as base58. The version prefix is used to both denote the network for
- * which the address is valid (see {@link NetworkParameters}, and also to indicate how the bytes inside the address
- * should be interpreted. Whilst almost all addresses today are hashes of public keys, another (currently unsupported
- * type) can contain a hash of a script instead.</p>
+ * A legacy (base58) Bitcoin address looks like 1MsScoe2fTJoq4ZPdQgqyhgWeoNamYPevy and is divided into two
+ * concrete types: {@link LegacyP2PKHAddress}, which is derived from the RIPE-MD160 hash of public key bytes,
+ * and {@link LegacyP2SHAddress}, which is derived from the hash of a {@link Script}.
  */
 public abstract class LegacyAddress extends Address {
     /**
