@@ -144,7 +144,7 @@ public abstract class LegacyAddress extends Address {
 
     /**
      * Get the version header of an address. This is the first byte of a base58 encoded address.
-     *
+     * 
      * @return version header as one byte
      */
     public abstract int getVersion();
