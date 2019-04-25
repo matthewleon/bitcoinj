@@ -20,12 +20,8 @@ package org.bitcoinj.core;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-import java.util.Arrays;
-import java.util.Objects;
-
 import javax.annotation.Nullable;
 
-import org.bitcoinj.params.Networks;
 import org.bitcoinj.script.Script;
 import org.bitcoinj.script.Script.ScriptType;
 import org.bitcoinj.script.ScriptPattern;
