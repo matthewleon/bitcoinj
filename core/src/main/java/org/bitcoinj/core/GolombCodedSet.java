@@ -1,29 +1,73 @@
 package org.bitcoinj.core;
 
+import com.google.common.primitives.Bytes;
+import com.google.common.primitives.Ints;
 import com.google.common.primitives.Longs;
 import com.tomgibara.bits.BitReader;
 import com.tomgibara.bits.BitWriter;
+import com.tomgibara.bits.Bits;
+import com.tomgibara.streams.StreamBytes;
+import com.tomgibara.streams.Streams;
+import com.tomgibara.streams.WriteStream;
+import org.bitcoinj.script.Script;
 import org.bouncycastle.crypto.macs.SipHash;
 import org.bouncycastle.crypto.params.KeyParameter;
-import sun.jvm.hotspot.runtime.Bytes;
 
-import java.io.ByteArrayOutputStream;
 import java.math.BigInteger;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
+import java.util.SortedSet;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 public class GolombCodedSet {
     
-    private static final SipHash SIP_HASH = new SipHash(2, 4);
+    private static final Comparator<Long> UNSIGNED_LONG_COMPARATOR = new Comparator<Long>() {
+        @Override
+        public int compare(Long o1, Long o2) {
+            return (int) (o1 - o2);
+        }
+    };
     
-    private byte[] compressedSet;
+    private final int n;
     
-    static List<Long> hashedSetConstruct(byte[][] raw_items, KeyParameter k, long m) {
+    private final byte[] compressedSet;
+    
+    public GolombCodedSet(byte[][] raw_items, long p, KeyParameter k, long m) {
+        SortedSet<Long> items = hashedSetConstruct(raw_items, k, m);
+        StreamBytes streamBytes = Streams.bytes();
+        try (WriteStream writeStream = streamBytes.writeStream()) {
+            BitWriter writer = Bits.writerTo(writeStream);
+            long last_value = 0;
+            for (Long item : items) {
+                long delta = item - last_value;
+                golombEncode(writer, delta, p);
+                last_value = item;
+            }
+        }
+        compressedSet = streamBytes.bytes();
+        n = items.size();
+    }
+    
+    public byte[] getCompressedSet() {
+        return compressedSet;
+    }
+    
+    public int size() {
+        return n;
+    }
+    
+    public byte[] serialize() {
+        return Bytes.concat(Ints.toByteArray(n), compressedSet);
+    }
+    
+    public static GolombCodedSet createBip158Filter(Collection<Transaction>)
+    
+    static SortedSet<Long> hashedSetConstruct(byte[][] raw_items, KeyParameter k, long m) {
         long n = (long) raw_items.length;
         long f = n * m;
         
-        List<Long> out = new ArrayList<>(raw_items.length);
+        SortedSet<Long> out = new ConcurrentSkipListSet<>(UNSIGNED_LONG_COMPARATOR);
         for (byte[] raw_item : raw_items) {
             long val = hashToRange(raw_item, f, k);
             out.add(val);
@@ -54,11 +98,11 @@ public class GolombCodedSet {
                 .longValue();
     }
     
-    private synchronized static long sipHash(byte[] item, KeyParameter k) {
-        // siphash operations are stateful, so we synchronize for thread-safety
-        SIP_HASH.init(k);
-        SIP_HASH.update(item, 0, item.length);
-        return SIP_HASH.doFinal();
+    private static long sipHash(byte[] item, KeyParameter k) {
+        SipHash sipHash = new SipHash(2, 4);
+        sipHash.init(k);
+        sipHash.update(item, 0, item.length);
+        return sipHash.doFinal();
     }
     
     private static BigInteger wrapLongUnsigned(long l) {
