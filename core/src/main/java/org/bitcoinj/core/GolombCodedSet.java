@@ -33,7 +33,7 @@ public class GolombCodedSet {
     
     private final byte[] compressedSet;
     
-    public GolombCodedSet(byte[][] raw_items, long p, KeyParameter k, long m) {
+    public GolombCodedSet(byte[][] raw_items, int p, KeyParameter k, long m) {
         SortedSet<Long> items = hashedSetConstruct(raw_items, k, m);
         StreamBytes streamBytes = Streams.bytes();
         try (WriteStream writeStream = streamBytes.writeStream()) {
@@ -61,7 +61,9 @@ public class GolombCodedSet {
         return Bytes.concat(Ints.toByteArray(n), compressedSet);
     }
     
-    public static GolombCodedSet createBip158Filter(Collection<Transaction>)
+//    public static GolombCodedSet createBip158Filter(Collection<Transaction> connectedTransactions) {
+//        
+//    }
     
     static SortedSet<Long> hashedSetConstruct(byte[][] raw_items, KeyParameter k, long m) {
         long n = (long) raw_items.length;
