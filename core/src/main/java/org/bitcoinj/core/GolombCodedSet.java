@@ -45,7 +45,11 @@ public class GolombCodedSet {
         KeyParameter k = new KeyParameter(blockHashLittleEndian, 0, 16);
         
         ImmutableList.Builder<byte[]> rawItemsBuilder = new ImmutableList.Builder<>();
-        rawItemsBuilder.addAll(previousOutputScripts);
+        
+        for (byte[] scriptBytes : previousOutputScripts) {
+            if (scriptBytes.length > 0) rawItemsBuilder.add(scriptBytes);
+        }
+        
         List<Transaction> transactions = block.getTransactions();
         if (transactions != null) {
             for (Transaction t : transactions) {
