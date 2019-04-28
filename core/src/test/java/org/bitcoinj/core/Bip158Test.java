@@ -21,8 +21,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import static org.bitcoinj.core.Utils.HEX;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 @RunWith(Parameterized.class)
 public class Bip158Test {
@@ -101,6 +100,8 @@ public class Bip158Test {
     public void testBuild() {
         log.info(testCase.toString());
         GolombCodedSet gcs = GolombCodedSet.buildBip158(testCase.block, testCase.previousOutputScripts);
+        log.info("actual: {}", HEX.encode(gcs.serialize()));
+        log.info("desired: {}",HEX.encode(testCase.basicFilter));
         assertArrayEquals(testCase.basicFilter, gcs.serialize());
     }
 

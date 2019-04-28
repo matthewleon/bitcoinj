@@ -46,9 +46,13 @@ public class GolombCodedSet {
         
         ImmutableList.Builder<byte[]> rawItemsBuilder = new ImmutableList.Builder<>();
         rawItemsBuilder.addAll(previousOutputScripts);
-        for (Transaction t : block.getTransactions()) {
-            for (TransactionOutput to : t.getOutputs()) {
-                rawItemsBuilder.add(to.getScriptBytes());
+        List<Transaction> transactions = block.getTransactions();
+        if (transactions != null) {
+            for (Transaction t : transactions) {
+                for (TransactionOutput to : t.getOutputs()) {
+                    byte[] scriptBytes = to.getScriptBytes();
+                    if (scriptBytes.length > 0) rawItemsBuilder.add(scriptBytes);
+                }
             }
         }
         ImmutableList<byte[]> rawItems = rawItemsBuilder.build();
