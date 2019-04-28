@@ -50,38 +50,23 @@ public class GolombCodedSet {
         KeyParameter k = new KeyParameter(blockHashLittleEndian, 0, 16);
         
         ImmutableList.Builder<byte[]> rawItemsBuilder = new ImmutableList.Builder<>();
-        rawItemsBuilder.addAll(getHashableScriptBytes(previousOutputScripts));
+        for (byte[] previousOutputScript : previousOutputScripts) {
+            // TODO: filter coinbase previous output script
+            if (previousOutputScript.length > 0) rawItemsBuilder.add(previousOutputScript);
+        }
         
         List<Transaction> transactions = block.getTransactions();
-        List<byte[]> outputScripts = new ArrayList<>();
         if (transactions != null) {
             for (Transaction t : transactions) {
                 for (TransactionOutput to : t.getOutputs()) {
-                    outputScripts.add(to.getScriptBytes());
+                    byte[] script = to.getScriptBytes();
+                    if (script.length > 1 && script[0] != (byte) OP_RETURN) rawItemsBuilder.add(script);
                 }
             }
         }
-        rawItemsBuilder.addAll(getHashableScriptBytes(outputScripts));
         
         ImmutableList<byte[]> rawItems = rawItemsBuilder.build();
         return build(rawItems, bip158p, k, bip158m);
-    }
-    
-    private static ImmutableList<byte[]> getHashableScriptBytes(Iterable<byte[]> scripts) {
-        ImmutableList.Builder<byte[]> rawItemsBuilder = new ImmutableList.Builder<>();
-        
-        for (byte[] script : scripts) {
-            // exclude empty scripts
-            if (script.length < 1)
-                continue;
-            
-            // exclude scripts beginning with OP_RETURN
-            if (script[0] == (byte) OP_RETURN)
-                continue;
-
-            rawItemsBuilder.add(script);
-        }
-        return rawItemsBuilder.build();
     }
     
     public static GolombCodedSet build(Collection<byte[]> rawItems, int p, KeyParameter k, long m) {
