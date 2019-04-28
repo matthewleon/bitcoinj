@@ -1,6 +1,8 @@
 package org.bitcoinj.core;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.SortedMultiset;
+import com.google.common.collect.TreeMultiset;
 import com.google.common.primitives.Bytes;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.Longs;
@@ -11,6 +13,7 @@ import com.tomgibara.streams.StreamBytes;
 import com.tomgibara.streams.Streams;
 import com.tomgibara.streams.WriteStream;
 import org.bitcoinj.script.Script;
+import org.bitcoinj.script.ScriptChunk;
 import org.bouncycastle.crypto.macs.SipHash;
 import org.bouncycastle.crypto.params.KeyParameter;
 import org.bouncycastle.util.Pack;
@@ -18,6 +21,8 @@ import org.bouncycastle.util.Pack;
 import java.math.BigInteger;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
+
+import static org.bitcoinj.script.ScriptOpCodes.OP_RETURN;
 
 public class GolombCodedSet {
     
@@ -37,7 +42,7 @@ public class GolombCodedSet {
         this.compressedSet = compressedSet;
     }
     
-    public static GolombCodedSet buildBip158(Block block, Iterable<byte[]> previousOutputScripts) {
+    public static GolombCodedSet buildBip158(Block block, Iterable<Script> previousOutputScripts) {
         final int bip158p = 19;
         final int bip158m = 784931;
         
@@ -45,22 +50,40 @@ public class GolombCodedSet {
         KeyParameter k = new KeyParameter(blockHashLittleEndian, 0, 16);
         
         ImmutableList.Builder<byte[]> rawItemsBuilder = new ImmutableList.Builder<>();
-        
-        for (byte[] scriptBytes : previousOutputScripts) {
-            if (scriptBytes.length > 0) rawItemsBuilder.add(scriptBytes);
-        }
+        rawItemsBuilder.addAll(getHashableScriptBytes(previousOutputScripts));
         
         List<Transaction> transactions = block.getTransactions();
+        List<Script> outputScripts = new ArrayList<>();
         if (transactions != null) {
             for (Transaction t : transactions) {
                 for (TransactionOutput to : t.getOutputs()) {
-                    byte[] scriptBytes = to.getScriptBytes();
-                    if (scriptBytes.length > 0) rawItemsBuilder.add(scriptBytes);
+                    outputScripts.add(to.getScriptPubKey());
                 }
             }
         }
+        rawItemsBuilder.addAll(getHashableScriptBytes(outputScripts));
+        
         ImmutableList<byte[]> rawItems = rawItemsBuilder.build();
         return build(rawItems, bip158p, k, bip158m);
+    }
+    
+    private static List<byte[]> getHashableScriptBytes(Iterable<Script> scripts) {
+        ImmutableList.Builder<byte[]> rawItemsBuilder = new ImmutableList.Builder<>();
+        
+        for (Script script : scripts) {
+            // exclude scripts beginning with OP_RETURN
+            List<ScriptChunk> chunks = script.getChunks();
+            if (chunks.size() > 0 && chunks.get(0).equalsOpCode(OP_RETURN))
+                continue;
+
+            // exclude empty scripts
+            byte[] scriptBytes = script.getProgram();
+            if (scriptBytes.length < 1)
+                continue;
+
+            rawItemsBuilder.add(scriptBytes);
+        }
+        return rawItemsBuilder.build();
     }
     
     public static GolombCodedSet build(Collection<byte[]> rawItems, int p, KeyParameter k, long m) {

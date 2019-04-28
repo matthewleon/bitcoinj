@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import org.bitcoinj.params.TestNet3Params;
+import org.bitcoinj.script.Script;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -78,9 +79,9 @@ public class Bip158Test {
             testCase.blockHash = Sha256Hash.wrap(i.next().asText());
             testCase.block = BITCOIN_SERIALIZER.makeBlock(HEX.decode(i.next().asText()));
             
-            ImmutableList.Builder<byte[]> previousOutputScripts = new ImmutableList.Builder<>();
+            ImmutableList.Builder<Script> previousOutputScripts = new ImmutableList.Builder<>();
             for (JsonNode outputScriptNode : ImmutableList.copyOf(i.next().iterator())) {
-                byte[] outputScript = HEX.decode(outputScriptNode.asText());
+                Script outputScript = new Script(HEX.decode(outputScriptNode.asText()));
                 previousOutputScripts.add(outputScript);
             }
             testCase.previousOutputScripts = previousOutputScripts.build();
@@ -109,7 +110,7 @@ public class Bip158Test {
         long blockHeight;
         Sha256Hash blockHash;
         Block block;
-        ImmutableList<byte[]> previousOutputScripts;
+        ImmutableList<Script> previousOutputScripts;
         byte[] previousBasicHeader;
         byte[] basicFilter;
         byte[] basicHeader;
