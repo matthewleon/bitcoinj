@@ -110,6 +110,7 @@ public class GolombCodedSet {
         BigInteger hash = wrapLongUnsigned(sipHash(item, k));
         return hash
                 .multiply(wrapLongUnsigned(f))
+                .shiftRight(64)
                 .longValue();
     }
     
