@@ -42,7 +42,7 @@ public class GolombCodedSet {
         this.compressedSet = compressedSet;
     }
     
-    public static GolombCodedSet buildBip158(Block block, Iterable<Script> previousOutputScripts) {
+    public static GolombCodedSet buildBip158(Block block, Iterable<byte[]> previousOutputScripts) {
         final int bip158p = 19;
         final int bip158m = 784931;
         
@@ -53,11 +53,11 @@ public class GolombCodedSet {
         rawItemsBuilder.addAll(getHashableScriptBytes(previousOutputScripts));
         
         List<Transaction> transactions = block.getTransactions();
-        List<Script> outputScripts = new ArrayList<>();
+        List<byte[]> outputScripts = new ArrayList<>();
         if (transactions != null) {
             for (Transaction t : transactions) {
                 for (TransactionOutput to : t.getOutputs()) {
-                    outputScripts.add(to.getScriptPubKey());
+                    outputScripts.add(to.getScriptBytes());
                 }
             }
         }
@@ -67,21 +67,19 @@ public class GolombCodedSet {
         return build(rawItems, bip158p, k, bip158m);
     }
     
-    private static List<byte[]> getHashableScriptBytes(Iterable<Script> scripts) {
+    private static ImmutableList<byte[]> getHashableScriptBytes(Iterable<byte[]> scripts) {
         ImmutableList.Builder<byte[]> rawItemsBuilder = new ImmutableList.Builder<>();
         
-        for (Script script : scripts) {
-            // exclude scripts beginning with OP_RETURN
-            List<ScriptChunk> chunks = script.getChunks();
-            if (chunks.size() > 0 && chunks.get(0).equalsOpCode(OP_RETURN))
-                continue;
-
+        for (byte[] script : scripts) {
             // exclude empty scripts
-            byte[] scriptBytes = script.getProgram();
-            if (scriptBytes.length < 1)
+            if (script.length < 1)
+                continue;
+            
+            // exclude scripts beginning with OP_RETURN
+            if (script[0] == (byte) OP_RETURN)
                 continue;
 
-            rawItemsBuilder.add(scriptBytes);
+            rawItemsBuilder.add(script);
         }
         return rawItemsBuilder.build();
     }

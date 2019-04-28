@@ -79,10 +79,9 @@ public class Bip158Test {
             testCase.blockHash = Sha256Hash.wrap(i.next().asText());
             testCase.block = BITCOIN_SERIALIZER.makeBlock(HEX.decode(i.next().asText()));
             
-            ImmutableList.Builder<Script> previousOutputScripts = new ImmutableList.Builder<>();
+            ImmutableList.Builder<byte[]> previousOutputScripts = new ImmutableList.Builder<>();
             for (JsonNode outputScriptNode : ImmutableList.copyOf(i.next().iterator())) {
-                Script outputScript = new Script(HEX.decode(outputScriptNode.asText()));
-                previousOutputScripts.add(outputScript);
+                previousOutputScripts.add(HEX.decode(outputScriptNode.asText()));
             }
             testCase.previousOutputScripts = previousOutputScripts.build();
             
@@ -110,7 +109,7 @@ public class Bip158Test {
         long blockHeight;
         Sha256Hash blockHash;
         Block block;
-        ImmutableList<Script> previousOutputScripts;
+        ImmutableList<byte[]> previousOutputScripts;
         byte[] previousBasicHeader;
         byte[] basicFilter;
         byte[] basicHeader;
