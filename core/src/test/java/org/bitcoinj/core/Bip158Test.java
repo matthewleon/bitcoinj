@@ -21,11 +21,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import static org.bitcoinj.core.Utils.HEX;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(Parameterized.class)
-public class GolombCodedSetTheories {
-    private static final Logger log = LoggerFactory.getLogger(GolombCodedSetTheories.class);
+public class Bip158Test {
+    private static final Logger log = LoggerFactory.getLogger(Bip158Test.class);
     
     private static final String TABLE_FILENAME = "bip158.json";
     
@@ -35,13 +36,13 @@ public class GolombCodedSetTheories {
     
     private final TestCase testCase;
 
-    public GolombCodedSetTheories(TestCase testCase) {
+    public Bip158Test(TestCase testCase) {
         this.testCase = testCase;
     }
     
     @Parameterized.Parameters
     public static Iterable<TestCase> testData() throws Exception {
-        InputStream tableStream = GolombCodedSetTheories.class.getResourceAsStream(TABLE_FILENAME);
+        InputStream tableStream = Bip158Test.class.getResourceAsStream(TABLE_FILENAME);
         InputStreamReader reader = new InputStreamReader(tableStream);
         JsonNode json = new ObjectMapper().readTree(reader);
         
@@ -100,9 +101,7 @@ public class GolombCodedSetTheories {
     public void testBuild() {
         log.info(testCase.toString());
         GolombCodedSet gcs = GolombCodedSet.buildBip158(testCase.block, testCase.previousOutputScripts);
-        String result = HEX.encode(gcs.serialize());
-        log.info(result);
-        log.info(HEX.encode(testCase.basicFilter));
+        assertArrayEquals(testCase.basicFilter, gcs.serialize());
     }
 
     private static final class TestCase {

@@ -66,6 +66,7 @@ public class GolombCodedSet {
                 golombEncode(writer, delta, p);
                 last_value = item;
             }
+            writer.flush();
         }
         int n = items.size();
         byte[] compressedSet = streamBytes.bytes();
