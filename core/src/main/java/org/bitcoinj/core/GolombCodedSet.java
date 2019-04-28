@@ -77,7 +77,8 @@ public class GolombCodedSet {
     }
     
     public byte[] serialize() {
-        return Bytes.concat(Ints.toByteArray(n), compressedSet);
+        byte[] size = new VarInt(n).encode();
+        return Bytes.concat(size, compressedSet);
     }
     
     private static SortedSet<Long> hashedSetConstruct(Collection<byte[]> rawItems, KeyParameter k, long m) {
