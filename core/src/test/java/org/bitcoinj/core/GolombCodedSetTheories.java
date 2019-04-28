@@ -102,6 +102,7 @@ public class GolombCodedSetTheories {
         GolombCodedSet gcs = GolombCodedSet.buildBip158(testCase.block, testCase.previousOutputScripts);
         String result = HEX.encode(gcs.serialize());
         log.info(result);
+        log.info(HEX.encode(testCase.basicFilter));
     }
 
     private static final class TestCase {

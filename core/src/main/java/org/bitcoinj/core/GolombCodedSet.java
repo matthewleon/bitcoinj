@@ -13,6 +13,7 @@ import com.tomgibara.streams.WriteStream;
 import org.bitcoinj.script.Script;
 import org.bouncycastle.crypto.macs.SipHash;
 import org.bouncycastle.crypto.params.KeyParameter;
+import org.bouncycastle.util.Pack;
 
 import java.math.BigInteger;
 import java.util.*;
@@ -40,7 +41,8 @@ public class GolombCodedSet {
         final int bip158p = 19;
         final int bip158m = 784931;
         
-        KeyParameter k = new KeyParameter(block.getHash().getBytes(), 0, 16);
+        byte[] blockHashLittleEndian = block.getHash().getReversedBytes();
+        KeyParameter k = new KeyParameter(blockHashLittleEndian, 0, 16);
         
         ImmutableList.Builder<byte[]> rawItemsBuilder = new ImmutableList.Builder<>();
         rawItemsBuilder.addAll(previousOutputScripts);
@@ -107,18 +109,21 @@ public class GolombCodedSet {
     }
 
     private static long hashToRange(byte[] item, long f, KeyParameter k) {
-        BigInteger hash = wrapLongUnsigned(sipHash(item, k));
+        BigInteger hash = wrapLongUnsigned(sipHashBigEndian(item, k));
         return hash
                 .multiply(wrapLongUnsigned(f))
                 .shiftRight(64)
                 .longValue();
     }
     
-    private static long sipHash(byte[] item, KeyParameter k) {
+    private static long sipHashBigEndian(byte[] item, KeyParameter k) {
+        // the SipHash provided with bouncycastle operates on Little Endian data
+        byte[] hashLittleEndian = new byte[8];
         SipHash sipHash = new SipHash(2, 4);
         sipHash.init(k);
         sipHash.update(item, 0, item.length);
-        return sipHash.doFinal();
+        sipHash.doFinal(hashLittleEndian, 0);
+        return Pack.littleEndianToLong(hashLittleEndian, 0);
     }
     
     private static BigInteger wrapLongUnsigned(long l) {
