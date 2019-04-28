@@ -10,7 +10,6 @@ import org.junit.runners.Parameterized;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
@@ -22,6 +21,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import static org.bitcoinj.core.Utils.HEX;
+import static org.junit.Assert.assertEquals;
 
 @RunWith(Parameterized.class)
 public class GolombCodedSetTheories {
@@ -77,41 +77,50 @@ public class GolombCodedSetTheories {
             testCase.blockHeight = i.next().asLong();
             testCase.blockHash = Sha256Hash.wrap(i.next().asText());
             testCase.block = BITCOIN_SERIALIZER.makeBlock(HEX.decode(i.next().asText()));
-            testCase.blockPreviousOutputScripts = new ArrayList<>();
+            
+            ImmutableList.Builder<byte[]> previousOutputScripts = new ImmutableList.Builder<>();
             for (JsonNode outputScriptNode : ImmutableList.copyOf(i.next().iterator())) {
-                testCase.blockPreviousOutputScripts.add(outputScriptNode.asText());
+                byte[] outputScript = HEX.decode(outputScriptNode.asText());
+                previousOutputScripts.add(outputScript);
             }
-            testCase.previousBasicHeader = i.next().asText();
-            testCase.basicFilter = i.next().asText();
-            testCase.basicHeader = i.next().asText();
+            testCase.previousOutputScripts = previousOutputScripts.build();
+            
+            testCase.previousBasicHeader = HEX.decode(i.next().asText());
+            testCase.basicFilter = HEX.decode(i.next().asText());
+            testCase.basicHeader = HEX.decode(i.next().asText());
             testCase.notes = i.next().asText();
+            
+            assertEquals(testCase.blockHash, testCase.block.getHash());
             
             return testCase;
         }
     }
     
     @Test
-    public void show() {
+    public void testBuild() {
         log.info(testCase.toString());
+        GolombCodedSet gcs = GolombCodedSet.buildBip158(testCase.block, testCase.previousOutputScripts);
+        String result = HEX.encode(gcs.serialize());
+        log.info(result);
     }
 
     private static final class TestCase {
         long blockHeight;
         Sha256Hash blockHash;
         Block block;
-        List<String> blockPreviousOutputScripts;
-        String previousBasicHeader;
-        String basicFilter;
-        String basicHeader;
+        ImmutableList<byte[]> previousOutputScripts;
+        byte[] previousBasicHeader;
+        byte[] basicFilter;
+        byte[] basicHeader;
         String notes;
-
+        
         @Override
         public String toString() {
             return "TestCase{" +
                     "blockHeight=" + blockHeight +
                     ", blockHash=" + blockHash +
                     ", block=" + block +
-                    ", blockPreviousOutputScripts=" + blockPreviousOutputScripts +
+                    ", previousOutputScripts=" + previousOutputScripts +
                     ", previousBasicHeader='" + previousBasicHeader + '\'' +
                     ", basicFilter='" + basicFilter + '\'' +
                     ", basicHeader='" + basicHeader + '\'' +

@@ -1,5 +1,6 @@
 package org.bitcoinj.core;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.primitives.Bytes;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.Longs;
@@ -14,10 +15,7 @@ import org.bouncycastle.crypto.macs.SipHash;
 import org.bouncycastle.crypto.params.KeyParameter;
 
 import java.math.BigInteger;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.List;
-import java.util.SortedSet;
+import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 public class GolombCodedSet {
@@ -33,8 +31,30 @@ public class GolombCodedSet {
     
     private final byte[] compressedSet;
     
-    public GolombCodedSet(byte[][] raw_items, int p, KeyParameter k, long m) {
-        SortedSet<Long> items = hashedSetConstruct(raw_items, k, m);
+    private GolombCodedSet(int n, byte[] compressedSet) {
+        this.n = n;
+        this.compressedSet = compressedSet;
+    }
+    
+    public static GolombCodedSet buildBip158(Block block, Iterable<byte[]> previousOutputScripts) {
+        final int bip158p = 19;
+        final int bip158m = 784931;
+        
+        KeyParameter k = new KeyParameter(block.getHash().getBytes(), 0, 16);
+        
+        ImmutableList.Builder<byte[]> rawItemsBuilder = new ImmutableList.Builder<>();
+        rawItemsBuilder.addAll(previousOutputScripts);
+        for (Transaction t : block.getTransactions()) {
+            for (TransactionOutput to : t.getOutputs()) {
+                rawItemsBuilder.add(to.getScriptBytes());
+            }
+        }
+        ImmutableList<byte[]> rawItems = rawItemsBuilder.build();
+        return build(rawItems, bip158p, k, bip158m);
+    }
+    
+    public static GolombCodedSet build(Collection<byte[]> rawItems, int p, KeyParameter k, long m) {
+        SortedSet<Long> items = hashedSetConstruct(rawItems, k, m);
         StreamBytes streamBytes = Streams.bytes();
         try (WriteStream writeStream = streamBytes.writeStream()) {
             BitWriter writer = Bits.writerTo(writeStream);
@@ -45,12 +65,9 @@ public class GolombCodedSet {
                 last_value = item;
             }
         }
-        compressedSet = streamBytes.bytes();
-        n = items.size();
-    }
-    
-    public byte[] getCompressedSet() {
-        return compressedSet;
+        int n = items.size();
+        byte[] compressedSet = streamBytes.bytes();
+        return new GolombCodedSet(n, compressedSet);
     }
     
     public int size() {
@@ -61,17 +78,13 @@ public class GolombCodedSet {
         return Bytes.concat(Ints.toByteArray(n), compressedSet);
     }
     
-//    public static GolombCodedSet createBip158Filter(Collection<Transaction> connectedTransactions) {
-//        
-//    }
-    
-    static SortedSet<Long> hashedSetConstruct(byte[][] raw_items, KeyParameter k, long m) {
-        long n = (long) raw_items.length;
+    private static SortedSet<Long> hashedSetConstruct(Collection<byte[]> rawItems, KeyParameter k, long m) {
+        long n = (long) rawItems.size();
         long f = n * m;
         
         SortedSet<Long> out = new ConcurrentSkipListSet<>(UNSIGNED_LONG_COMPARATOR);
-        for (byte[] raw_item : raw_items) {
-            long val = hashToRange(raw_item, f, k);
+        for (byte[] rawItem : rawItems) {
+            long val = hashToRange(rawItem, f, k);
             out.add(val);
         }
         
