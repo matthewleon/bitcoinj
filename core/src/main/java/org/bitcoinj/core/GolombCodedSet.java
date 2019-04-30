@@ -51,7 +51,6 @@ public class GolombCodedSet {
         
         ImmutableList.Builder<byte[]> rawItemsBuilder = new ImmutableList.Builder<>();
         for (byte[] previousOutputScript : previousOutputScripts) {
-            // TODO: filter coinbase previous output script
             if (previousOutputScript.length > 0) rawItemsBuilder.add(previousOutputScript);
         }
         
