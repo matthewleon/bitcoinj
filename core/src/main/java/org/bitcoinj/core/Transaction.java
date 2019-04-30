@@ -307,6 +307,29 @@ public class Transaction extends ChildMessage {
         return cachedWTxId;
     }
 
+    /** Gets the transaction weight as defined in BIP141. */
+    public int getWeight() {
+        if (!hasWitnesses())
+            return getMessageSize() * 4;
+        try (final ByteArrayOutputStream stream = new UnsafeByteArrayOutputStream(length)) {
+            bitcoinSerializeToStream(stream, false);
+            final int baseSize = stream.size();
+            stream.reset();
+            bitcoinSerializeToStream(stream, true);
+            final int totalSize = stream.size();
+            return baseSize * 3 + totalSize;
+        } catch (IOException e) {
+            throw new RuntimeException(e); // cannot happen
+        }
+    }
+
+    /** Gets the virtual transaction size as defined in BIP141. */
+    public int getVsize() {
+        if (!hasWitnesses())
+            return getMessageSize();
+        return (getWeight() + 3) / 4; // round up
+    }
+
     /**
      * Gets the sum of the inputs, regardless of who owns them.
      */
@@ -743,10 +766,18 @@ public class Transaction extends ChildMessage {
         if (!wTxId.equals(txId))
             s.append(", wtxid ").append(wTxId);
         s.append('\n');
+        int weight = getWeight();
+        int size = unsafeBitcoinSerialize().length;
+        int vsize = getVsize();
+        s.append(indent).append("weight: ").append(weight).append(" wu, ");
+        if (size != vsize)
+            s.append(vsize).append(" virtual bytes, ");
+        s.append(size).append(" bytes\n");
         if (updatedAt != null)
             s.append(indent).append("updated: ").append(Utils.dateTimeFormat(updatedAt)).append('\n');
         if (version != 1)
             s.append(indent).append("version ").append(version).append('\n');
+
         if (isTimeLocked()) {
             s.append(indent).append("time locked until ");
             if (lockTime < LOCKTIME_THRESHOLD) {
@@ -862,9 +893,12 @@ public class Transaction extends ChildMessage {
         }
         final Coin fee = getFee();
         if (fee != null) {
-            final int size = unsafeBitcoinSerialize().length;
-            s.append(indent).append("   fee  ").append(fee.multiply(1000).divide(size).toFriendlyString()).append("/kB, ")
-                    .append(fee.toFriendlyString()).append(" for ").append(size).append(" bytes\n");
+            s.append(indent).append("   fee  ");
+            s.append(fee.multiply(1000).divide(weight).toFriendlyString()).append("/wu, ");
+            if (size != vsize)
+                s.append(fee.multiply(1000).divide(vsize).toFriendlyString()).append("/vkB, ");
+            s.append(fee.multiply(1000).divide(size).toFriendlyString()).append("/kB  ");
+            s.append(fee.toFriendlyString()).append('\n');
         }
         return s.toString();
     }
