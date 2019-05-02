@@ -3,6 +3,7 @@ package org.bitcoinj.core;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
+import com.google.common.primitives.UnsignedLongs;
 import org.bitcoinj.params.TestNet3Params;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -12,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -99,8 +101,11 @@ public class Bip158Test {
     public void testBuild() {
         log.info(testCase.toString());
         GolombCodedSet gcs = GolombCodedSet.buildBip158(testCase.block, testCase.previousOutputScripts);
+        log.info("test case notes: " + testCase.notes);
         log.info("actual: {}", HEX.encode(gcs.serialize()));
-        log.info("desired: {}",HEX.encode(testCase.basicFilter));
+        log.info("desired: {}", HEX.encode(testCase.basicFilter));
+        log.info("actual:  {}", new BigInteger(gcs.serialize()).toString(2));
+        log.info("desired: {}", new BigInteger(testCase.basicFilter).toString(2));
         assertArrayEquals(testCase.basicFilter, gcs.serialize());
     }
 

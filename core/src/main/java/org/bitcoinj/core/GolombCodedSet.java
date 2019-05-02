@@ -1,35 +1,29 @@
 package org.bitcoinj.core;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.SortedMultiset;
-import com.google.common.collect.TreeMultiset;
-import com.google.common.primitives.Bytes;
-import com.google.common.primitives.Ints;
-import com.google.common.primitives.Longs;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.primitives.UnsignedLongs;
 import com.tomgibara.bits.BitReader;
 import com.tomgibara.bits.BitWriter;
 import com.tomgibara.bits.Bits;
 import com.tomgibara.streams.StreamBytes;
 import com.tomgibara.streams.Streams;
 import com.tomgibara.streams.WriteStream;
-import org.bitcoinj.script.Script;
-import org.bitcoinj.script.ScriptChunk;
 import org.bouncycastle.crypto.macs.SipHash;
 import org.bouncycastle.crypto.params.KeyParameter;
 import org.bouncycastle.util.Pack;
 
-import java.math.BigInteger;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
 
+import static com.google.common.primitives.Bytes.concat;
 import static org.bitcoinj.script.ScriptOpCodes.OP_RETURN;
 
-public class GolombCodedSet {
-    
+public final class GolombCodedSet {
+
     private static final Comparator<Long> UNSIGNED_LONG_COMPARATOR = new Comparator<Long>() {
         @Override
         public int compare(Long o1, Long o2) {
-            return (int) (o1 - o2);
+            return UnsignedLongs.compare(o1, o2);
         }
     };
     
@@ -49,9 +43,10 @@ public class GolombCodedSet {
         byte[] blockHashLittleEndian = block.getHash().getReversedBytes();
         KeyParameter k = new KeyParameter(blockHashLittleEndian, 0, 16);
         
-        ImmutableList.Builder<byte[]> rawItemsBuilder = new ImmutableList.Builder<>();
+        ImmutableSet.Builder<Bytes> rawItemsBuilder = ImmutableSet.builder();
         for (byte[] previousOutputScript : previousOutputScripts) {
-            if (previousOutputScript.length > 0) rawItemsBuilder.add(previousOutputScript);
+            if (previousOutputScript.length > 0)
+                rawItemsBuilder.add(new Bytes(previousOutputScript));
         }
         
         List<Transaction> transactions = block.getTransactions();
@@ -59,16 +54,17 @@ public class GolombCodedSet {
             for (Transaction t : transactions) {
                 for (TransactionOutput to : t.getOutputs()) {
                     byte[] script = to.getScriptBytes();
-                    if (script.length > 1 && script[0] != (byte) OP_RETURN) rawItemsBuilder.add(script);
+                    if (script.length > 1 && script[0] != (byte) OP_RETURN)
+                        rawItemsBuilder.add(new Bytes(script));
                 }
             }
         }
         
-        ImmutableList<byte[]> rawItems = rawItemsBuilder.build();
+        ImmutableSet<Bytes> rawItems = rawItemsBuilder.build();
         return build(rawItems, bip158p, k, bip158m);
     }
     
-    public static GolombCodedSet build(Collection<byte[]> rawItems, int p, KeyParameter k, long m) {
+    public static GolombCodedSet build(Set<Bytes> rawItems, int p, KeyParameter k, long m) {
         SortedSet<Long> items = hashedSetConstruct(rawItems, k, m);
         StreamBytes streamBytes = Streams.bytes();
         try (WriteStream writeStream = streamBytes.writeStream()) {
@@ -92,17 +88,16 @@ public class GolombCodedSet {
     
     public byte[] serialize() {
         byte[] size = new VarInt(n).encode();
-        return Bytes.concat(size, compressedSet);
+        return concat(size, compressedSet);
     }
     
-    private static SortedSet<Long> hashedSetConstruct(Collection<byte[]> rawItems, KeyParameter k, long m) {
-        long n = (long) rawItems.size();
+    private static SortedSet<Long> hashedSetConstruct(Set<Bytes> rawItems, KeyParameter k, long m) {
+        long n = ((long) rawItems.size()) & 0xffffffffL;
         long f = n * m;
         
         SortedSet<Long> out = new ConcurrentSkipListSet<>(UNSIGNED_LONG_COMPARATOR);
-        for (byte[] rawItem : rawItems) {
-            long val = hashToRange(rawItem, f, k);
-            out.add(val);
+        for (Bytes rawItem : rawItems) {
+            out.add(hashToRange(rawItem, f, k));
         }
         
         return out;
@@ -123,12 +118,21 @@ public class GolombCodedSet {
         return ((long) q << p) + r;
     }
 
-    private static long hashToRange(byte[] item, long f, KeyParameter k) {
-        BigInteger hash = wrapLongUnsigned(sipHashBigEndian(item, k));
-        return hash
-                .multiply(wrapLongUnsigned(f))
-                .shiftRight(64)
-                .longValue();
+    private static long hashToRange(Bytes item, long f, KeyParameter k) {
+        final long lower32mask = 0xffffffffL;
+        long hash = sipHashBigEndian(item.bytes, k);
+        long a = hash >>> 32;
+        long b = hash & lower32mask;
+        long c = f >>> 32;
+        long d = f & lower32mask;
+
+        long ac = a * c;
+        long ad = a * d;
+        long bc = b * c;
+        long bd = b * d;
+
+        long mid34 = (bd >>> 32) + (bc & lower32mask) + (ad & lower32mask);
+        return ac + (bc >>> 32) + (ad >>> 32) + (mid34 >>> 32);
     }
     
     private static long sipHashBigEndian(byte[] item, KeyParameter k) {
@@ -140,8 +144,26 @@ public class GolombCodedSet {
         sipHash.doFinal(hashLittleEndian, 0);
         return Pack.littleEndianToLong(hashLittleEndian, 0);
     }
-    
-    private static BigInteger wrapLongUnsigned(long l) {
-        return new BigInteger(1, Longs.toByteArray(l));
+
+    private static final class Bytes {
+        private final byte[] bytes;
+
+        private Bytes(byte[] bytes) {
+            this.bytes = bytes;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Bytes other = (Bytes) o;
+            return Arrays.equals(this.bytes, other.bytes);
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(bytes);
+        }
     }
+    
 }
