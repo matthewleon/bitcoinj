@@ -110,7 +110,7 @@ public class SegwitAddress extends Address {
      * @return witness version, between 0 and 16
      */
     public int getWitnessVersion() {
-        return bytes[0] & 0xff;
+        return bytes[0];
     }
 
     /**
