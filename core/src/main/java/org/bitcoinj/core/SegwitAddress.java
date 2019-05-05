@@ -156,6 +156,10 @@ public class SegwitAddress extends Address {
 
     private static SegwitAddress segwitAddressFromBech32Data(NetworkParameters params, byte[] data)
             throws AddressFormatException {
+        // TODO: refactor me _into_ Bech32
+        if (data.length < 1) {
+            throw new AddressFormatException.InvalidDataLength("Can't decode address with empty data section.");
+        }
         byte[] witnessData = convertBits(data, 1, data.length - 1, 5, 8, false);
         int witnessVersion = data[0] & 0xff;
         return new SegwitAddress(params, witnessVersion, witnessData);
