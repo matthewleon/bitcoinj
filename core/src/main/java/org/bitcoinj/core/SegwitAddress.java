@@ -82,21 +82,6 @@ public class SegwitAddress extends Address {
     }
 
     /**
-     * Private constructor. Use {@link #fromBech32(NetworkParameters, String)},
-     * {@link #fromHash(NetworkParameters, byte[])} or {@link #fromKey(NetworkParameters, ECKey)}.
-     * 
-     * @param params
-     *            network this address is valid for
-     * @param data
-     *            in segwit address format, before bit re-arranging and bech32 encoding
-     * @throws AddressFormatException
-     *             if any of the sanity checks fail
-     */
-    private SegwitAddress(NetworkParameters params, byte[] data) throws AddressFormatException {
-        this(params, data[0], convertBits(data, 1, data.length - 1, 5, 8, false));
-    }
-
-    /**
      * Returns the witness version in decoded form. Only version 0 is in use right now.
      * 
      * @return witness version, between 0 and 16
@@ -159,14 +144,21 @@ public class SegwitAddress extends Address {
         if (params == null) {
             for (NetworkParameters p : Networks.get()) {
                 if (bechData.hrp.equals(p.getSegwitAddressHrp()))
-                    return new SegwitAddress(p, bechData.data);
+                    return segwitAddressFromBech32Data(p, bechData.data);
             }
             throw new AddressFormatException.InvalidPrefix("No network found for " + bech32);
         } else {
             if (bechData.hrp.equals(params.getSegwitAddressHrp()))
-                return new SegwitAddress(params, bechData.data);
+                return segwitAddressFromBech32Data(params, bechData.data);
             throw new AddressFormatException.WrongNetwork(bechData.hrp);
         }
+    }
+
+    private static SegwitAddress segwitAddressFromBech32Data(NetworkParameters params, byte[] data)
+            throws AddressFormatException {
+        byte[] witnessData = convertBits(data, 1, data.length - 1, 5, 8, false);
+        int witnessVersion = data[0] & 0xff;
+        return new SegwitAddress(params, witnessVersion, witnessData);
     }
 
     /**
