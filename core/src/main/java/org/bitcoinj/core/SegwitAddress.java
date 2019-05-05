@@ -20,6 +20,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 
 import java.io.ByteArrayOutputStream;
+import java.util.Arrays;
 
 import javax.annotation.Nullable;
 
@@ -49,6 +50,8 @@ public class SegwitAddress extends Address {
     public static final int WITNESS_PROGRAM_MIN_LENGTH = 2;
     public static final int WITNESS_PROGRAM_MAX_LENGTH = 40;
 
+    private final int witnessVersion;
+
     /**
      * Private constructor. Use {@link #fromBech32(NetworkParameters, String)},
      * {@link #fromHash(NetworkParameters, byte[])} or {@link #fromKey(NetworkParameters, ECKey)}.
@@ -62,18 +65,20 @@ public class SegwitAddress extends Address {
      */
     private SegwitAddress(NetworkParameters params, int witnessVersion, byte[] witnessProgram)
             throws AddressFormatException {
-        this(params, encode(witnessVersion, witnessProgram));
-    }
+        super(params, witnessProgram);
+        this.witnessVersion = witnessVersion;
 
-    /**
-     * Helper for the above constructor.
-     */
-    private static byte[] encode(int witnessVersion, byte[] witnessProgram) throws AddressFormatException {
-        byte[] convertedProgram = convertBits(witnessProgram, 0, witnessProgram.length, 8, 5, true);
-        byte[] bytes = new byte[1 + convertedProgram.length];
-        bytes[0] = (byte) (Script.encodeToOpN(witnessVersion) & 0xff);
-        System.arraycopy(convertedProgram, 0, bytes, 1, convertedProgram.length);
-        return bytes;
+        if (bytes.length < 1)
+            throw new AddressFormatException.InvalidDataLength("Zero converted found");
+        if (witnessVersion < 0 || witnessVersion > 16)
+            throw new AddressFormatException("Invalid script version: " + witnessVersion);
+        if (witnessProgram.length < WITNESS_PROGRAM_MIN_LENGTH || witnessProgram.length > WITNESS_PROGRAM_MAX_LENGTH)
+            throw new AddressFormatException.InvalidDataLength("Invalid length: " + witnessProgram.length);
+        // Check script length for version 0
+        if (witnessVersion == 0 && witnessProgram.length != WITNESS_PROGRAM_LENGTH_PKH
+                && witnessProgram.length != WITNESS_PROGRAM_LENGTH_SH)
+            throw new AddressFormatException.InvalidDataLength(
+                    "Invalid length for address version 0: " + witnessProgram.length);
     }
 
     /**
@@ -88,20 +93,7 @@ public class SegwitAddress extends Address {
      *             if any of the sanity checks fail
      */
     private SegwitAddress(NetworkParameters params, byte[] data) throws AddressFormatException {
-        super(params, data);
-        if (data.length < 1)
-            throw new AddressFormatException.InvalidDataLength("Zero data found");
-        final int witnessVersion = getWitnessVersion();
-        if (witnessVersion < 0 || witnessVersion > 16)
-            throw new AddressFormatException("Invalid script version: " + witnessVersion);
-        byte[] witnessProgram = getWitnessProgram();
-        if (witnessProgram.length < WITNESS_PROGRAM_MIN_LENGTH || witnessProgram.length > WITNESS_PROGRAM_MAX_LENGTH)
-            throw new AddressFormatException.InvalidDataLength("Invalid length: " + witnessProgram.length);
-        // Check script length for version 0
-        if (witnessVersion == 0 && witnessProgram.length != WITNESS_PROGRAM_LENGTH_PKH
-                && witnessProgram.length != WITNESS_PROGRAM_LENGTH_SH)
-            throw new AddressFormatException.InvalidDataLength(
-                    "Invalid length for address version 0: " + witnessProgram.length);
+        this(params, data[0], convertBits(data, 1, data.length - 1, 5, 8, false));
     }
 
     /**
@@ -110,7 +102,7 @@ public class SegwitAddress extends Address {
      * @return witness version, between 0 and 16
      */
     public int getWitnessVersion() {
-        return bytes[0] & 0xff;
+        return witnessVersion;
     }
 
     /**
@@ -119,8 +111,7 @@ public class SegwitAddress extends Address {
      * @return witness program
      */
     public byte[] getWitnessProgram() {
-        // skip version byte
-        return convertBits(bytes, 1, bytes.length - 1, 5, 8, false);
+        return bytes;
     }
 
     @Override
@@ -213,14 +204,18 @@ public class SegwitAddress extends Address {
      * @return textual form encoded in bech32
      */
     public String toBech32() {
-        return Bech32.encode(params.getSegwitAddressHrp(), bytes);
+        byte[] convertedProgram = convertBits(bytes, 0, bytes.length, 8, 5, true);
+        byte[] bech32Bytes = new byte[1 + convertedProgram.length];
+        bech32Bytes[0] = (byte) (witnessVersion & 0xff);
+        System.arraycopy(convertedProgram, 0, bech32Bytes, 1, convertedProgram.length);
+        return Bech32.encode(params.getSegwitAddressHrp(), bech32Bytes);
     }
 
     /**
      * Helper for re-arranging bits into groups.
      */
     private static byte[] convertBits(final byte[] in, final int inStart, final int inLen, final int fromBits,
-            final int toBits, final boolean pad) throws AddressFormatException {
+                                      final int toBits, final boolean pad) throws AddressFormatException {
         int acc = 0;
         int bits = 0;
         ByteArrayOutputStream out = new ByteArrayOutputStream(64);
