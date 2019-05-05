@@ -156,5 +156,4 @@ public class Bech32 {
         if (!verifyChecksum(hrp, values)) throw new AddressFormatException.InvalidChecksum();
         return new Bech32Data(hrp, Arrays.copyOfRange(values, 0, values.length - 6));
     }
-
 }
