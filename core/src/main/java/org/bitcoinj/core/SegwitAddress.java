@@ -142,19 +142,17 @@ public class SegwitAddress extends Address {
         if (params == null) {
             for (NetworkParameters p : Networks.get()) {
                 if (bechData.hrp.equals(p.getSegwitAddressHrp()))
-                    return segwitAddressFromBech32Data(p, bechData.data);
+                    return fromBech32Data(p, bechData.data);
             }
             throw new AddressFormatException.InvalidPrefix("No network found for " + bech32);
         } else {
             if (bechData.hrp.equals(params.getSegwitAddressHrp()))
-                return segwitAddressFromBech32Data(params, bechData.data);
+                return fromBech32Data(params, bechData.data);
             throw new AddressFormatException.WrongNetwork(bechData.hrp);
         }
     }
 
-    private static SegwitAddress segwitAddressFromBech32Data(NetworkParameters params, byte[] data)
-            throws AddressFormatException {
-        // TODO: refactor me _into_ Bech32
+    private static SegwitAddress fromBech32Data(NetworkParameters params, byte[] data) throws AddressFormatException {
         if (data.length < 1) {
             throw new AddressFormatException.InvalidDataLength("Can't decode address with empty data section.");
         }
