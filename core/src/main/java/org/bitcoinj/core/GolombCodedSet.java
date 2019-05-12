@@ -1,5 +1,6 @@
 package org.bitcoinj.core;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.primitives.UnsignedLongs;
 import com.tomgibara.bits.BitReader;
@@ -128,7 +129,42 @@ public final class GolombCodedSet {
 
         return false;
     }
-    
+
+    private boolean matchAny(KeyParameter k, Collection<byte[]> targets, int p, long m) {
+        long f = n * m;
+        long[] targetHashes = new long[targets.size()];
+        for (int i = 0; i < targetHashes.length; i++) {
+            targetHashes[i] = hashToRange(targets[i], f, k);
+        }
+        Arrays.sort(targetHashes, UNSIGNED_LONG_COMPARATOR);
+
+        BitReader reader = Bits.readerFrom(compressedSet);
+        long value = 0;
+        int targetIndex = 0;
+        long targetVal = targetHashes[targetIndex];
+
+        // TODO: revisit
+        outer: for (int i = 0; i < n; i++) {
+            long delta = golombDecode(reader, p);
+            value += delta;
+            inner: while (true) {
+                if (targetVal == value)
+                    return true;
+                if (targetVal > value)
+                    break inner;
+
+                // targetVal < value
+                targetIndex++;
+
+                if (targetIndex == targetHashes.length)
+                    break outer;
+
+                targetVal = targetHashes[targetIndex];
+            }
+        }
+        return false;
+    }
+
     private static SortedSet<Long> hashedSetConstruct(Set<Bytes> rawItems, KeyParameter k, long m) {
         long n = ((long) rawItems.size()) & LOWER_32_MASK;
         long f = n * m;
@@ -214,5 +250,5 @@ public final class GolombCodedSet {
             return Arrays.hashCode(bytes);
         }
     }
-    
+
 }
