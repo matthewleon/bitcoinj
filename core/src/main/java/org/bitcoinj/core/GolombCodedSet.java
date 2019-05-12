@@ -140,26 +140,16 @@ public final class GolombCodedSet {
 
         BitReader reader = Bits.readerFrom(compressedSet);
         long value = 0;
-        int targetIndex = 0;
-        long targetVal = targetHashes[targetIndex];
 
-        // TODO: revisit
         outer: for (int i = 0; i < n; i++) {
             long delta = golombDecode(reader, p);
             value += delta;
-            inner: while (true) {
+            inner: for (int j = 0; j < targetHashes.length; j++) {
+                long targetVal = targetHashes[j];
                 if (targetVal == value)
                     return true;
                 if (targetVal > value)
                     break inner;
-
-                // targetVal < value
-                targetIndex++;
-
-                if (targetIndex == targetHashes.length)
-                    break outer;
-
-                targetVal = targetHashes[targetIndex];
             }
         }
         return false;
