@@ -119,22 +119,10 @@ public final class GolombCodedSet {
     }
 
     private static long hashToRange(Bytes item, long f, KeyParameter k) {
-        final long lower32mask = 0xffffffffL;
         long hash = sipHashBigEndian(item.bytes, k);
-        long a = hash >>> 32;
-        long b = hash & lower32mask;
-        long c = f >>> 32;
-        long d = f & lower32mask;
-
-        long ac = a * c;
-        long ad = a * d;
-        long bc = b * c;
-        long bd = b * d;
-
-        long mid34 = (bd >>> 32) + (bc & lower32mask) + (ad & lower32mask);
-        return ac + (bc >>> 32) + (ad >>> 32) + (mid34 >>> 32);
+        return mapIntoRange(hash, f);
     }
-    
+
     private static long sipHashBigEndian(byte[] item, KeyParameter k) {
         // the SipHash provided with bouncycastle operates on Little Endian data
         byte[] hashLittleEndian = new byte[8];
@@ -143,6 +131,33 @@ public final class GolombCodedSet {
         sipHash.update(item, 0, item.length);
         sipHash.doFinal(hashLittleEndian, 0);
         return Pack.littleEndianToLong(hashLittleEndian, 0);
+    }
+
+    /**
+     * Map a value x that is uniformly distributed in the range [0, 2^64) to a
+     * value uniformly distributed in [0, n) by returning the upper 64 bits of
+     * by returning the upper 64 bit of x * n.
+     *
+     * The code here is ported from Bitcoin core's blockfilter.cpp, which in turn borrows
+     * from a StackOverflow answer:
+     * See: https://stackoverflow.com/a/26855440
+     *
+     */
+    private static long mapIntoRange(long x, long n) {
+        final long lower32mask = 0xffffffffL;
+
+        final long a = x >>> 32;
+        final long b = x & lower32mask;
+        final long c = n >>> 32;
+        final long d = n & lower32mask;
+
+        final long ac = a * c;
+        final long ad = a * d;
+        final long bc = b * c;
+        final long bd = b * d;
+
+        final long mid34 = (bd >>> 32) + (bc & lower32mask) + (ad & lower32mask);
+        return ac + (bc >>> 32) + (ad >>> 32) + (mid34 >>> 32);
     }
 
     private static final class Bytes {
