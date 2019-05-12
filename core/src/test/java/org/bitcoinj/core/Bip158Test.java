@@ -3,8 +3,10 @@ package org.bitcoinj.core;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
+import com.google.common.primitives.Bytes;
 import com.google.common.primitives.UnsignedLongs;
 import org.bitcoinj.params.TestNet3Params;
+import org.bouncycastle.crypto.params.KeyParameter;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -23,6 +25,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import static org.bitcoinj.core.Utils.HEX;
+import static org.bitcoinj.script.ScriptOpCodes.OP_RETURN;
 import static org.junit.Assert.*;
 
 @RunWith(Parameterized.class)
@@ -98,15 +101,40 @@ public class Bip158Test {
     }
     
     @Test
-    public void testBuild() {
-        log.info(testCase.toString());
+    public void testBuildAndSerialize() {
         GolombCodedSet gcs = GolombCodedSet.buildBip158(testCase.block, testCase.previousOutputScripts);
-        log.info("test case notes: " + testCase.notes);
-        log.info("actual: {}", HEX.encode(gcs.serialize()));
-        log.info("desired: {}", HEX.encode(testCase.basicFilter));
-        log.info("actual:  {}", new BigInteger(gcs.serialize()).toString(2));
-        log.info("desired: {}", new BigInteger(testCase.basicFilter).toString(2));
         assertArrayEquals(testCase.basicFilter, gcs.serialize());
+    }
+
+    @Test
+    public void testDeserializeAndMatch() {
+        GolombCodedSet gcs = GolombCodedSet.deserialize(testCase.basicFilter);
+        byte[] blockHashLittleEndian = testCase.blockHash.getReversedBytes();
+        KeyParameter k = new KeyParameter(blockHashLittleEndian, 0, 16);
+        for (byte[] element : getFilterElements(testCase.block, testCase.previousOutputScripts)) {
+            assertTrue(gcs.bip158match(k, element));
+        }
+    }
+
+    private static ImmutableList<byte[]> getFilterElements(Block block, Iterable<byte[]> previousOutputScripts) {
+        ImmutableList.Builder<byte[]> rawItemsBuilder = ImmutableList.builder();
+        for (byte[] previousOutputScript : previousOutputScripts) {
+            if (previousOutputScript.length > 0)
+                rawItemsBuilder.add(previousOutputScript);
+        }
+
+        List<Transaction> transactions = block.getTransactions();
+        if (transactions != null) {
+            for (Transaction t : transactions) {
+                for (TransactionOutput to : t.getOutputs()) {
+                    byte[] script = to.getScriptBytes();
+                    if (script.length > 1 && script[0] != (byte) OP_RETURN)
+                        rawItemsBuilder.add(script);
+                }
+            }
+        }
+
+        return rawItemsBuilder.build();
     }
 
     private static final class TestCase {

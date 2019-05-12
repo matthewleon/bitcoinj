@@ -20,6 +20,8 @@ import static org.bitcoinj.script.ScriptOpCodes.OP_RETURN;
 
 public final class GolombCodedSet {
 
+    private static final long LOWER_32_MASK = 0xffffffffL;
+
     private static final Comparator<Long> UNSIGNED_LONG_COMPARATOR = new Comparator<Long>() {
         @Override
         public int compare(Long o1, Long o2) {
@@ -27,13 +29,19 @@ public final class GolombCodedSet {
         }
     };
     
-    private final int n;
+    private final long n;
     
     private final byte[] compressedSet;
     
-    private GolombCodedSet(int n, byte[] compressedSet) {
+    private GolombCodedSet(long n, byte[] compressedSet) {
         this.n = n;
         this.compressedSet = compressedSet;
+    }
+
+    public static GolombCodedSet deserialize(byte[] serialized) {
+        VarInt n = new VarInt(serialized, 0);
+        byte[] compressedSet = Arrays.copyOfRange(serialized, n.getOriginalSizeInBytes(), serialized.length);
+        return new GolombCodedSet(n.value, compressedSet);
     }
     
     public static GolombCodedSet buildBip158(Block block, Iterable<byte[]> previousOutputScripts) {
@@ -42,13 +50,18 @@ public final class GolombCodedSet {
         
         byte[] blockHashLittleEndian = block.getHash().getReversedBytes();
         KeyParameter k = new KeyParameter(blockHashLittleEndian, 0, 16);
+        ImmutableSet<Bytes> rawItems = getFilterElements(block, previousOutputScripts);
         
+        return build(rawItems, bip158p, k, bip158m);
+    }
+
+    private static ImmutableSet<Bytes> getFilterElements(Block block, Iterable<byte[]> previousOutputScripts) {
         ImmutableSet.Builder<Bytes> rawItemsBuilder = ImmutableSet.builder();
         for (byte[] previousOutputScript : previousOutputScripts) {
             if (previousOutputScript.length > 0)
                 rawItemsBuilder.add(new Bytes(previousOutputScript));
         }
-        
+
         List<Transaction> transactions = block.getTransactions();
         if (transactions != null) {
             for (Transaction t : transactions) {
@@ -59,9 +72,8 @@ public final class GolombCodedSet {
                 }
             }
         }
-        
-        ImmutableSet<Bytes> rawItems = rawItemsBuilder.build();
-        return build(rawItems, bip158p, k, bip158m);
+
+        return rawItemsBuilder.build();
     }
     
     public static GolombCodedSet build(Set<Bytes> rawItems, int p, KeyParameter k, long m) {
@@ -77,12 +89,12 @@ public final class GolombCodedSet {
             }
             writer.flush();
         }
-        int n = items.size();
+        long n = ((long) items.size() & LOWER_32_MASK);
         byte[] compressedSet = streamBytes.bytes();
         return new GolombCodedSet(n, compressedSet);
     }
     
-    public int size() {
+    public long size() {
         return n;
     }
     
@@ -90,36 +102,60 @@ public final class GolombCodedSet {
         byte[] size = new VarInt(n).encode();
         return concat(size, compressedSet);
     }
+
+    boolean bip158match(KeyParameter k, byte[] target) {
+        final int bip158p = 19;
+        final int bip158m = 784931;
+
+        return match(k, target, bip158p, bip158m);
+    }
+
+    boolean match(KeyParameter k, byte[] target, int p, long m) {
+        long f = n * m;
+        long targetHash = hashToRange(target, f, k);
+
+
+        BitReader reader = Bits.readerFrom(compressedSet);
+        long lastValue = 0;
+        for (long i = 0; i < n; i++) {
+            long delta = golombDecode(reader, p);
+            lastValue += delta;
+            if (lastValue == targetHash)
+                return true;
+            if (lastValue > targetHash)
+                break;
+        }
+
+        return false;
+    }
     
     private static SortedSet<Long> hashedSetConstruct(Set<Bytes> rawItems, KeyParameter k, long m) {
-        long n = ((long) rawItems.size()) & 0xffffffffL;
+        long n = ((long) rawItems.size()) & LOWER_32_MASK;
         long f = n * m;
         
         SortedSet<Long> out = new ConcurrentSkipListSet<>(UNSIGNED_LONG_COMPARATOR);
         for (Bytes rawItem : rawItems) {
-            out.add(hashToRange(rawItem, f, k));
+            out.add(hashToRange(rawItem.bytes, f, k));
         }
         
         return out;
     }
 
     public static void golombEncode(BitWriter writer, long x, int p) {
-        for (long q = x >>> p; q > 0; q--) {
-            writer.writeBit(1);
-        }
+        writer.writeBooleans(true, x >>> p);
         writer.writeBit(0);
         writer.write(x, p);
     }
     
     static long golombDecode(BitReader reader, int p) {
         int q = reader.readUntil(false);
-        
+
         long r = reader.readLong(p);
         return ((long) q << p) + r;
     }
 
-    private static long hashToRange(Bytes item, long f, KeyParameter k) {
-        long hash = sipHashBigEndian(item.bytes, k);
+    private static long hashToRange(byte[] bytes, long f, KeyParameter k) {
+        long hash = sipHashBigEndian(bytes, k);
         return mapIntoRange(hash, f);
     }
 
@@ -144,19 +180,17 @@ public final class GolombCodedSet {
      *
      */
     private static long mapIntoRange(long x, long n) {
-        final long lower32mask = 0xffffffffL;
-
         final long a = x >>> 32;
-        final long b = x & lower32mask;
+        final long b = x & LOWER_32_MASK;
         final long c = n >>> 32;
-        final long d = n & lower32mask;
+        final long d = n & LOWER_32_MASK;
 
         final long ac = a * c;
         final long ad = a * d;
         final long bc = b * c;
         final long bd = b * d;
 
-        final long mid34 = (bd >>> 32) + (bc & lower32mask) + (ad & lower32mask);
+        final long mid34 = (bd >>> 32) + (bc & LOWER_32_MASK) + (ad & LOWER_32_MASK);
         return ac + (bc >>> 32) + (ad >>> 32) + (mid34 >>> 32);
     }
 
