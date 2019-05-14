@@ -57,6 +57,8 @@ public class VersionMessage extends Message {
     public static final int NODE_NETWORK_LIMITED = 1 << 10;
     /** A service bit used by Bitcoin-ABC to announce Bitcoin Cash nodes. */
     public static final int NODE_BITCOIN_CASH = 1 << 5;
+    /** A service bit used to signal support for compact block filters (BIP158) */
+    public static final int NODE_COMPACT_FILTERS = 1 << 6;
 
     /**
      * The version number of the protocol spoken.
