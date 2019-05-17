@@ -105,6 +105,7 @@ public class ScriptChunk {
             stream.write(opcode);
         } else if (data != null) {
             if (opcode < OP_PUSHDATA1) {
+                // TODO: this looks very dangerous
                 checkState(data.length == opcode);
                 stream.write(opcode);
             } else if (opcode == OP_PUSHDATA1) {
