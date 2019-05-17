@@ -43,7 +43,7 @@ public class ScriptChunk {
     @Nullable
     public final byte[] data;
 
-    public ScriptChunk(int opcode, byte[] data) {
+    public ScriptChunk(int opcode, @Nullable byte[] data) {
         this.opcode = opcode;
         this.data = data;
     }
