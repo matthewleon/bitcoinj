@@ -144,8 +144,14 @@ public class ScriptChunk {
      * The size, in bytes, that this chunk would occupy if serialized into a Script.
      */
     public int size() {
-        int opcodeSize = 1;
-        return opcodeSize + (data == null ? 0 : data.length);
+        final int opcodeSize = 1;
+
+        int pushDataSize = 0;
+        if (opcode == OP_PUSHDATA1) pushDataSize = 1;
+        else if (opcode == OP_PUSHDATA2) pushDataSize = 2;
+        else if (opcode == OP_PUSHDATA4) pushDataSize = 4;
+
+        return opcodeSize + pushDataSize + (data == null ? 0 : data.length);
     }
 
     @Override
