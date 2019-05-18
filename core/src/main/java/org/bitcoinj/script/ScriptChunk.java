@@ -21,6 +21,7 @@ import org.bitcoinj.core.Utils;
 
 import javax.annotation.Nullable;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -46,6 +47,38 @@ public class ScriptChunk {
     public ScriptChunk(int opcode, @Nullable byte[] data) {
         this.opcode = opcode;
         this.data = data;
+    }
+
+    public static ScriptChunk parseFromStream(ByteArrayInputStream input) throws ScriptException {
+        int opcode = input.read();
+
+        long dataToRead = -1;
+        if (opcode >= 0 && opcode < OP_PUSHDATA1) {
+            // Read some bytes of data, where how many is the opcode value itself.
+            dataToRead = opcode;
+        } else if (opcode == OP_PUSHDATA1) {
+            if (input.available() < 1) throw new ScriptException(ScriptError.SCRIPT_ERR_UNKNOWN_ERROR, "Unexpected end of script");
+            dataToRead = input.read();
+        } else if (opcode == OP_PUSHDATA2) {
+            // Read a short, then read that many bytes of data.
+            if (input.available() < 2) throw new ScriptException(ScriptError.SCRIPT_ERR_UNKNOWN_ERROR, "Unexpected end of script");
+            dataToRead = Utils.readUint16FromStream(input);
+        } else if (opcode == OP_PUSHDATA4) {
+            // Read a uint32, then read that many bytes of data.
+            // Though this is allowed, because its value cannot be > 520, it should never actually be used
+            if (input.available() < 4) throw new ScriptException(ScriptError.SCRIPT_ERR_UNKNOWN_ERROR, "Unexpected end of script");
+            dataToRead = Utils.readUint32FromStream(input);
+        }
+
+        if (dataToRead == -1)
+            return new ScriptChunk(opcode, null);
+
+        if (dataToRead > input.available())
+            throw new ScriptException(ScriptError.SCRIPT_ERR_BAD_OPCODE, "Push of data element that is larger than remaining data");
+
+        byte[] data = new byte[(int)dataToRead];
+        checkState(dataToRead == 0 || input.read(data, 0, (int)dataToRead) == dataToRead);
+        return new ScriptChunk(opcode, data);
     }
 
     public boolean equalsOpCode(int opcode) {
