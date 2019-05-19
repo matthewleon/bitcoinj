@@ -57,6 +57,12 @@ public class ScriptChunkTest {
     }
 
     @Test
+    public void decodeOp0() {
+        ScriptChunk op0 = new ScriptChunk(OP_0, new byte[]{});
+        assertEquals(0, op0.decodeOpN());
+    }
+
+    @Test
     public void testShortestPossibleDataPush() {
         assertTrue("empty push", new ScriptBuilder().data(new byte[0]).build().getChunks().get(0)
                 .isShortestPossiblePushData());
