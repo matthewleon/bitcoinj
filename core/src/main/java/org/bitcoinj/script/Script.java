@@ -462,7 +462,7 @@ public class Script {
 
     private int findKeyInRedeem(ECKey key) {
         checkArgument(chunks.get(0).isOpCode()); // P2SH scriptSig
-        int numKeys = Script.decodeFromOpN(chunks.get(chunks.size() - 2).opcode);
+        int numKeys = chunks.get(chunks.size() - 2).decodeOpN();
         for (int i = 0 ; i < numKeys ; i++) {
             if (Arrays.equals(chunks.get(1 + i).data, key.getPubKey())) {
                 return i;
@@ -482,7 +482,7 @@ public class Script {
             throw new ScriptException(ScriptError.SCRIPT_ERR_UNKNOWN_ERROR, "Only usable for multisig scripts.");
 
         ArrayList<ECKey> result = Lists.newArrayList();
-        int numKeys = Script.decodeFromOpN(chunks.get(chunks.size() - 2).opcode);
+        int numKeys = chunks.get(chunks.size() - 2).decodeOpN();
         for (int i = 0 ; i < numKeys ; i++)
             result.add(ECKey.fromPublicOnly(chunks.get(1 + i).data));
         return result;
@@ -490,7 +490,7 @@ public class Script {
 
     private int findSigInRedeem(byte[] signatureBytes, Sha256Hash hash) throws SignatureDecodeException {
         checkArgument(chunks.get(0).isOpCode()); // P2SH scriptSig
-        int numKeys = Script.decodeFromOpN(chunks.get(chunks.size() - 2).opcode);
+        int numKeys = chunks.get(chunks.size() - 2).decodeOpN();
         TransactionSignature signature = TransactionSignature.decodeFromBitcoin(signatureBytes, true, false);
         for (int i = 0 ; i < numKeys ; i++) {
             if (ECKey.fromPublicOnly(chunks.get(i + 1).data).verify(hash, signature)) {
@@ -507,7 +507,7 @@ public class Script {
 
     private static int getSigOpCount(List<ScriptChunk> chunks, boolean accurate) throws ScriptException {
         int sigOps = 0;
-        int lastOpCode = OP_INVALIDOPCODE;
+        ScriptChunk lastScriptChunk = null;
         for (ScriptChunk chunk : chunks) {
             if (chunk.isOpCode()) {
                 switch (chunk.opcode) {
@@ -517,15 +517,16 @@ public class Script {
                     break;
                 case OP_CHECKMULTISIG:
                 case OP_CHECKMULTISIGVERIFY:
+                    int lastOpCode = lastScriptChunk.opcode;
                     if (accurate && lastOpCode >= OP_1 && lastOpCode <= OP_16)
-                        sigOps += decodeFromOpN(lastOpCode);
+                        sigOps += lastScriptChunk.decodeOpN();
                     else
                         sigOps += 20;
                     break;
                 default:
                     break;
                 }
-                lastOpCode = chunk.opcode;
+                lastScriptChunk = chunk;
             }
         }
         return sigOps;
@@ -591,7 +592,7 @@ public class Script {
         if (ScriptPattern.isSentToMultisig(this)) {
             // for N of M CHECKMULTISIG script we will need N signatures to spend
             ScriptChunk nChunk = chunks.get(0);
-            return Script.decodeFromOpN(nChunk.opcode);
+            return nChunk.decodeOpN();
         } else if (ScriptPattern.isP2PKH(this) || ScriptPattern.isP2PK(this)) {
             // P2PKH and P2PK require single sig
             return 1;
@@ -884,7 +885,7 @@ public class Script {
                 case OP_14:
                 case OP_15:
                 case OP_16:
-                    stack.add(Utils.reverseBytes(Utils.encodeMPI(BigInteger.valueOf(decodeFromOpN(opcode)), false)));
+                    stack.add(Utils.reverseBytes(Utils.encodeMPI(BigInteger.valueOf(chunk.decodeOpN()), false)));
                     break;
                 case OP_NOP:
                     break;
