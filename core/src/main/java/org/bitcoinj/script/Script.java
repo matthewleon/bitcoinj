@@ -533,14 +533,7 @@ public class Script {
     }
 
     public static int decodeFromOpN(int opcode) {
-        checkArgument((opcode == OP_0 || opcode == OP_1NEGATE) || (opcode >= OP_1 && opcode <= OP_16),
-                "decodeFromOpN called on non OP_N opcode: %s", ScriptOpCodes.getOpCodeName(opcode));
-        if (opcode == OP_0)
-            return 0;
-        else if (opcode == OP_1NEGATE)
-            return -1;
-        else
-            return opcode + 1 - OP_1;
+        return new ScriptChunk(opcode, null).decodeOpN();
     }
 
     public static int encodeToOpN(int value) {

@@ -27,6 +27,7 @@ import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.Objects;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static org.bitcoinj.script.ScriptOpCodes.*;
 
@@ -68,7 +69,14 @@ public class ScriptChunk {
 
     /** If this chunk is an OP_N opcode returns the equivalent integer value. */
     public int decodeOpN() {
-        return Script.decodeFromOpN(opcode);
+        checkArgument((opcode == OP_0 || opcode == OP_1NEGATE) || (opcode >= OP_1 && opcode <= OP_16),
+                "decodeOpN called on non OP_N chunk: %s", this);
+        if (opcode == OP_0)
+            return 0;
+        else if (opcode == OP_1NEGATE)
+            return -1;
+        else
+            return opcode + 1 - OP_1;
     }
 
     /**
