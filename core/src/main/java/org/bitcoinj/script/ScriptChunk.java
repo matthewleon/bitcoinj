@@ -34,7 +34,7 @@ import static org.bitcoinj.script.ScriptOpCodes.*;
  * A script element that is either a data push (signature, pubkey, etc) or a non-push (logic, numeric, etc) operation.
  */
 public class ScriptChunk {
-    /** Operation to be executed. Opcodes are defined in {@link ScriptOpCodes}. */
+    /** ValidatedOperation to be executed. Opcodes are defined in {@link ScriptOpCodes}. */
     public final int opcode;
     /**
      * For push operations, this is the vector to be pushed on the stack. For {@link ScriptOpCodes#OP_0}, the vector is

@@ -108,7 +108,7 @@ an encrypted deterministic key chain:
 - The private keys at the top of the heirarchy M, M/0, M/0/0, M/0/1 are precalculated when the heirarchy is initialized
   and stored in the wallet encrypted.
 - Keys that hang off the external/internal parent keys only have their public keys stored. The private key is always
-  derived on the fly. The ECKey API already allows an AES key/password to be specified when signing, and this operation
+  derived on the fly. The ECKey API already allows an AES key/password to be specified when signing, and this validatedOperation
   will be extended to decrypting not the current key but the parent key and then rederiving.
 
 
